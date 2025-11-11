@@ -1,22 +1,23 @@
 # Faceless
+
 Face recognition
 
 1. Шаардлагатай сангууд суулгах
-bashpip install opencv-python
-pip install face_recognition
-pip install numpy
+   bashpip install opencv-python
+   pip install face_recognition
+   pip install numpy
 2. Бүтэн систем үүсгэеНүүр таних системCode import cv2
-import face_recognition
-import pickle
-import os
-import numpy as np
-from datetime import datetime
+   import face_recognition
+   import pickle
+   import os
+   import numpy as np
+   from datetime import datetime
 
 class FaceRecognitionSystem:
-    def __init__(self):
-        self.known_face_encodings = []
-        self.known_face_names = []
-        self.dХэрэглэх заавар:
+def **init**(self):
+self.known_face_encodings = []
+self.known_face_names = []
+self.dХэрэглэх заавар:
 Алхам 1: Сангууд суулгах
 bashpip install opencv-python face_recognition numpy
 Алхам 2: Программ ажиллуулах
@@ -51,3 +52,6 @@ Space дарж зураг авах (5-10 зураг санал болгох)
 ✅ Хялбар интерфэйс
 
 github test hiijinaa
+
+mani amraa d github pushleh pulldeh iig zaaj ugjinaa <333
+aimr sn surjga shooo <3
