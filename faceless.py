@@ -975,9 +975,12 @@ if __name__ == "__main__":
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
         print(f"\n❌ Алдаа гарлаа: {e}")
+<<<<<<< Updated upstream
 11
 =======
         print(f"\n❌ Алдаа гарлаа: {e}")
 >>>>>>> Stashed changes
 =======
         print(f"\n❌ Алдаа гарлаа: {e}")
+=======
+>>>>>>> Stashed changes
