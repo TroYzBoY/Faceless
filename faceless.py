@@ -664,4 +664,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n\n🛑 Програм зогссон (Ctrl+C)")
     except Exception as e:
-        print(f"\n❌ Алдаа гарлаа: {e}")
+<       Updated upstream
+print(f"\n❌ Алдаа гарлаа: {e}")
+
+print(f"\n❌ Алдаа гарлаа: {e}")
