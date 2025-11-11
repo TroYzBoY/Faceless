@@ -592,7 +592,8 @@ class FaceRecognitionSystem:
 def main():
     # ӨӨРИЙН ЗАМАА ЭНДЕ ОРУУЛНА УУ!
     # Жишээ: data_file="C:/Users/YourName/Desktop/data/face_data.pkl"
-    system = FaceRecognitionSystem(threshold=0.82, data_file="C:/Users/troyz/OneDrive/Desktop/faceless/data/face_data.pkl")
+    system = FaceRecognitionSystem(
+        threshold=0.82, data_file="C:/Users/Dell/Desktop/bodlogo/rengoku/uranus/Git/selection-sort/Git 10.15 merge sort/merge-sort/find/Faceless/data")
     print("=" * 60)
     print("📱 AUTO FACE ID СИСТЕМ (Phone Face ID шиг)")
     print("=" * 60)
