@@ -684,4 +684,4 @@ if __name__ == "__main__":
         print("\n\n🛑 Програм зогссон (Ctrl+C)")
     except Exception as e:
         print(f"\n❌ Алдаа гарлаа: {e}")
-1
+11
