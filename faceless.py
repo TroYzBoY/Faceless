@@ -1,69 +1,17 @@
+import cv2
 import pickle
 import time
 from datetime import datetime
 import numpy as np
 import os
-
-
-def collect_face_data_from_webcam(self, name, num_samples=10):
-        """Вебкамаас нүүрний дата цуглуулах - сайжруулсан"""
-
-        # Хэрэв энэ нэртэй хүн аль хэдийн байгаа бол сануулах
-        if name in self.known_face_names:
-            print(f"⚠️ '{name}' аль хэдийн бүртгэлтэй байна!")
-            choice = input(
-                "Юу хийх вэ?\n  1 - Шинэ зураг НЭМЭХ (сайжруулах)\n  2 - Өмнөхийг СОЛИХ (устгаад шинээр)\n  3 - Цуцлах\nСонголт: ").strip()
-
-            if choice == '1':
-                print(f"✅ {name}-д шинэ зургууд нэмэх горимд орлоо")
-            elif choice == '2':
-                # Өмнөх датаг устгах
-                indices = [i for i, n in enumerate(
-                    self.known_face_names) if n == name]
-                for idx in sorted(indices, reverse=True):
-                    del self.known_face_features[idx]
-                    del self.known_face_names[idx]
-                print(f"🗑️ {name}-ын хуучин дата устгагдлаа, шинээр бүртгэнэ")
-            elif choice == '3':
-                print("🚫 Цуцлагдлаа")
-                return False
-            else:
-                print("❌ Буруу сонголт, цуцлагдлаа")
-                return False
-
-        print(f"📹 {name}-ын нүүрийг {num_samples} удаа авах гэж байна...")
-        print("💡 Өөр өөр өнцөг, гэрэлтүүлэгээр зураг авбал сайн!")
-
-        video_capture = cv2.VideoCapture(0)
-
-        if not video_capture.isOpened():
-            print("❌ Камер нээгдсэнгүй!")
-            return False
-
-        features_list = []
-        count = 0
-
-        while count < num_samples:
-            ret, frame = video_capture.read()
-            if not ret:
-                print("❌ Камераас frame уншиж чадсангүй!")
-                break
-
-            # Нүүр олох
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = self.face_cascade.detectMultiScale(
-                gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50)
-            )
-
-            # Нүүрүүдийг зурах
-            face_detected = Falseimport cv2
+from collections import Counter
 
 
 class FaceRecognitionSystem:
     def __init__(self, threshold=0.82, data_file="face_data.pkl"):
         self.known_face_features = []
         self.known_face_names = []
-        self.data_file = data_file  # Одоо өөрчлөх боломжтой
+        self.data_file = data_file
         self.threshold = threshold
 
         # OpenCV нүүр олох classifier
@@ -164,10 +112,30 @@ class FaceRecognitionSystem:
         return hog_features[:256]
 
     def auto_collect_face_data(self, name, num_samples=10, auto_save=True):
-        """
-        🤖 АВТОМАТ НҮҮР ТАНИУЛАХ - Phone Face ID шиг
-        Автоматаар нүүрийг олж, зураг аваад, хадгална
-        """
+        """🤖 АВТОМАТ НҮҮР ТАНИУЛАХ - Phone Face ID шиг"""
+
+        # Хэрэв энэ нэртэй хүн аль хэдийн байгаа бол сануулах
+        if name in self.known_face_names:
+            print(f"⚠️ '{name}' аль хэдийн бүртгэлтэй байна!")
+            choice = input(
+                "Юу хийх вэ?\n  1 - Шинэ зураг НЭМЭХ (сайжруулах)\n  2 - Өмнөхийг СОЛИХ (устгаад шинээр)\n  3 - Цуцлах\nСонголт: ").strip()
+
+            if choice == '1':
+                print(f"✅ {name}-д шинэ зургууд нэмэх горимд орлоо")
+            elif choice == '2':
+                indices = [i for i, n in enumerate(
+                    self.known_face_names) if n == name]
+                for idx in sorted(indices, reverse=True):
+                    del self.known_face_features[idx]
+                    del self.known_face_names[idx]
+                print(f"🗑️ {name}-ын хуучин дата устгагдлаа, шинээр бүртгэнэ")
+            elif choice == '3':
+                print("🚫 Цуцлагдлаа")
+                return False
+            else:
+                print("❌ Буруу сонголт, цуцлагдлаа")
+                return False
+
         print(f"\n{'='*60}")
         print(f"📱 {name}-ын нүүрийг автоматаар бүртгэж байна...")
         print(f"🎯 {num_samples} өөр өнцгөөс зураг авна")
@@ -189,7 +157,7 @@ class FaceRecognitionSystem:
         min_position_diff = 20
 
         stable_frames = 0
-        min_stable_frames = 3  # Багасгасан - хурдан болгох
+        min_stable_frames = 3
 
         print("🔍 Нүүрийг олж байна...")
 
@@ -246,9 +214,7 @@ class FaceRecognitionSystem:
                     cv2.circle(frame, (x+ex+ew//2, y+ey+eh//2),
                                ew//2, (255, 0, 0), 2)
 
-                if (ready_to_capture and
-                    is_new_angle and
-                    has_eyes and
+                if (ready_to_capture and is_new_angle and has_eyes and
                         current_time - last_capture_time >= capture_interval):
 
                     features = self.extract_face_features(frame, (x, y, w, h))
@@ -260,11 +226,12 @@ class FaceRecognitionSystem:
                         last_capture_time = current_time
                         stable_frames = 0
 
-                        cv2.circle(frame, (frame.shape[1]//2, frame.shape[0]//2),
-                                   50, (0, 255, 0), 5)
+                        cv2.circle(
+                            frame, (frame.shape[1]//2, frame.shape[0]//2), 50, (0, 255, 0), 5)
 
                         print(f"📸 {count}/{num_samples} - ✓ Авлаа!")
 
+            # Progress bar
             bar_width = frame.shape[1] - 40
             bar_height = 30
             bar_x, bar_y = 20, frame.shape[0] - 50
@@ -318,12 +285,6 @@ class FaceRecognitionSystem:
         cv2.destroyAllWindows()
 
         if len(features_list) >= 3:
-            # ХУУЧИн КОД: зөвхөн дундаж feature хадгалж байсан
-            # avg_features = np.mean(features_list, axis=0)
-            # self.known_face_features.append(avg_features)
-            # self.known_face_names.append(name)
-
-            # ШИНЭ КОД: Бүх features-ийг хадгалах (илүү сайн танилт)
             for features in features_list:
                 self.known_face_features.append(features)
                 self.known_face_names.append(name)
@@ -348,32 +309,15 @@ class FaceRecognitionSystem:
 
         if not os.path.exists(images_folder):
             print(f"❌ {images_folder} олдсонгүй!")
-
-
-<< << << < Updated upstream
-<< << << < Updated upstream
-            return
+            return False
 
         image_files = [f for f in os.listdir(images_folder)
                        if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))]
 
         if not image_files:
             print("❌ Зураг олдсонгүй!")
-            return
+            return False
 
-=======
-=======
->>>>>>> Stashed changes
-            return False
-        
-        image_files = [f for f in os.listdir(images_folder) 
-                      if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))]
-        
-        if not image_files:
-            print("❌ Зураг олдсонгүй!")
-            return False
-        
->>>>>>> Stashed changes
         success_count = 0
         for filename in image_files:
             image_path = os.path.join(images_folder, filename)
@@ -406,120 +350,14 @@ class FaceRecognitionSystem:
                 print(f"⚠️ {filename}-д нүүр олдсонгүй")
 
         print(f"\n📊 Нийт: {success_count}/{len(image_files)} нүүр таниулсан")
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 
-=======
-=======
->>>>>>> Stashed changes
-        
-        # Автоматаар хадгалах эсэхийг асуух
         if success_count > 0:
             save = input("\n💾 Одоо хадгалах уу? (y/n): ").strip().lower()
             if save == 'y' or save == 'yes':
                 self.save_data()
-        
+
         return success_count > 0
-    
-    def collect_face_data_from_webcam(self, name, num_samples=10):
-        """Вебкамаас нүүрний дата цуглуулах - сайжруулсан"""
-        print(f"📹 {name}-ын нүүрийг {num_samples} удаа авах гэж байна...")
-        print("💡 Өөр өөр өнцөг, гэрэлтүүлэгээр зураг авбал сайн!")
-        
-        video_capture = cv2.VideoCapture(0)
-        
-        if not video_capture.isOpened():
-            print("❌ Камер нээгдсэнгүй!")
-            return False
-        
-        features_list = []
-        count = 0
-        
-        while count < num_samples:
-            ret, frame = video_capture.read()
-            if not ret:
-                print("❌ Камераас frame уншиж чадсангүй!")
-                break
-            
-            # Нүүр олох
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = self.face_cascade.detectMultiScale(
-                gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50)
-            )
-            
-            # Нүүрүүдийг зурах
-            face_detected = False
-            for (x, y, w, h) in faces:
-                face_detected = True
-                cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                
-                # Нүдийг олох
-                roi_gray = gray[y:y+h, x:x+w]
-                eyes = self.eye_cascade.detectMultiScale(roi_gray, minNeighbors=8)
-                for (ex, ey, ew, eh) in eyes:
-                    cv2.circle(frame, (x+ex+ew//2, y+ey+eh//2), ew//2, (255, 0, 0), 2)
-            
-            # Прогресс мэдээлэл
-            progress_text = f"Авсан: {count}/{num_samples}"
-            cv2.putText(frame, progress_text, (10, 30),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            
-            instruction = "SPACE - зураг авах | Q - гарах"
-            cv2.putText(frame, instruction, (10, 60),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-            
-            if face_detected:
-                status = "✓ Нүүр олдлоо! SPACE дарна уу"
-                color = (0, 255, 0)
-            else:
-                status = "✗ Нүүр олохыг оролдож байна..."
-                color = (0, 0, 255)
-            
-            cv2.putText(frame, status, (10, 90),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-            
-            cv2.imshow('Нүүр таниулах', frame)
-            
-            key = cv2.waitKey(1) & 0xFF
-            
-            # Space дарахад зураг авах
-            if key == ord(' ') and len(faces) > 0:
-                face = max(faces, key=lambda rect: rect[2] * rect[3])
-                features = self.extract_face_features(frame, face)
-                
-                if features is not None:
-                    features_list.append(features)
-                    count += 1
-                    print(f"✅ Зураг {count}/{num_samples} авлаа!")
-                else:
-                    print("⚠️ Features гаргаж чадсангүй, дахин оролдоно уу")
-            
-            # Q дарахад гарах
-            elif key == ord('q'):
-                print("🚫 Цуцлагдлаа")
-                break
-        
-        video_capture.release()
-        cv2.destroyAllWindows()
-        
-        # Дундаж features авах
-        if len(features_list) >= 3:  # Хамгийн багадаа 3 зураг
-            avg_features = np.mean(features_list, axis=0)
-            self.known_face_features.append(avg_features)
-            self.known_face_names.append(name)
-            print(f"✅ {name} амжилттай таниулсан! ({len(features_list)} зураг)")
-            
-            # Автоматаар хадгалах эсэхийг асуух
-            save = input("\n💾 Одоо хадгалах уу? (y/n): ").strip().lower()
-            if save == 'y' or save == 'yes':
-                self.save_data()
-            
-            return True
-        else:
-            print(f"❌ Хангалттай зураг аваагүй! ({len(features_list)}/{num_samples})")
-            return False
-    
->>>>>>> Stashed changes
+
     def save_data(self):
         """Нүүрний датаг файлд хадгалах"""
         try:
@@ -532,7 +370,6 @@ class FaceRecognitionSystem:
             with open(self.data_file, 'wb') as f:
                 pickle.dump(data, f)
 
-            from collections import Counter
             name_counts = Counter(self.known_face_names)
 
             print(f"💾 Дата хадгалагдлаа!")
@@ -560,7 +397,6 @@ class FaceRecognitionSystem:
                 if 'timestamp' in data:
                     print(f"📅 Хадгалсан огноо: {data['timestamp']}")
 
-            from collections import Counter
             name_counts = Counter(self.known_face_names)
 
             print(f"✅ Дата ачаалагдлаа!")
@@ -587,7 +423,7 @@ class FaceRecognitionSystem:
         return similarity, is_match
 
     def recognize_faces_video(self):
-        """Видеогоор нүүр танилт хийх - ОНОВЧЛОГДСОН"""
+        """Видеогоор нүүр танилт хийх"""
         if not self.known_face_features:
             print("❌ Эхлээд дата ачаална уу эсвэл нүүр таниулна уу!")
             return
@@ -604,16 +440,13 @@ class FaceRecognitionSystem:
             print("❌ Камер нээгдсэнгүй!")
             return
 
-        # Хурд сайжруулах параметрүүд
-        frame_skip = 3  # 3 frame тутамд танилт хийх
+        frame_skip = 3
         frame_count = 0
 
-        # FPS тооцоолох
         fps_start_time = time.time()
         fps_frame_count = 0
         fps = 0
 
-        # Сүүлийн танилтын үр дүн хадгалах
         last_results = {}
 
         while True:
@@ -624,16 +457,13 @@ class FaceRecognitionSystem:
             frame_count += 1
             fps_frame_count += 1
 
-            # FPS тооцоолох
             if fps_frame_count >= 30:
                 elapsed = time.time() - fps_start_time
                 fps = fps_frame_count / elapsed if elapsed > 0 else 0
                 fps_start_time = time.time()
                 fps_frame_count = 0
 
-            # Frame skip - хурд сайжруулах
             if frame_count % frame_skip != 0:
-                # Сүүлийн үр дүнг харуулах
                 for face_id, (x, y, w, h, name, confidence) in last_results.items():
                     if name != "Танигдаагүй":
                         if confidence > 90:
@@ -663,14 +493,12 @@ class FaceRecognitionSystem:
                     break
                 continue
 
-            # Нүүр олох
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             faces = self.face_cascade.detectMultiScale(
                 gray, scaleFactor=1.2, minNeighbors=5,
                 minSize=(60, 60), maxSize=(400, 400)
             )
 
-            # Шинэ үр дүн хадгалах
             new_results = {}
 
             for face_id, (x, y, w, h) in enumerate(faces):
@@ -685,7 +513,6 @@ class FaceRecognitionSystem:
                 max_similarity = 0
                 best_match_name = None
 
-                # Бүх хадгалсан features-тай харьцуулах
                 for idx, known_features in enumerate(self.known_face_features):
                     similarity, _ = self.compare_faces(
                         known_features, features)
@@ -697,10 +524,8 @@ class FaceRecognitionSystem:
                     name = best_match_name
                     confidence = max_similarity * 100
 
-                # Үр дүн хадгалах
                 new_results[face_id] = (x, y, w, h, name, confidence)
 
-                # Хүрээ зурах
                 if name != "Танигдаагүй":
                     if confidence > 90:
                         color = (0, 255, 0)
@@ -721,10 +546,8 @@ class FaceRecognitionSystem:
                 cv2.putText(frame, text, (x + 5, label_y - 5),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
-            # Сүүлийн үр дүнг шинэчлэх
             last_results = new_results
 
-            # Мэдээлэл харуулах
             cv2.putText(frame, f"FPS: {fps:.1f}", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
@@ -762,7 +585,6 @@ class FaceRecognitionSystem:
             print("📋 Бүртгэлтэй хүн байхгүй")
             return
 
-        from collections import Counter
         name_counts = Counter(self.known_face_names)
 
         print(f"\n📋 Бүртгэлтэй хүмүүс ({len(name_counts)}):")
@@ -773,29 +595,21 @@ class FaceRecognitionSystem:
 
 
 def main():
-    # ӨӨРИЙН ЗАМАА ЭНДЕ ОРУУЛНА УУ!
-    # Жишээ: data_file="C:/Users/YourName/Desktop/data/face_data.pkl"
+    # Энгийн файлын нэр ашиглах - одоогийн фолдерт хадгална
     system = FaceRecognitionSystem(
-        threshold=0.82, data_file="C:/Users/Dell/Desktop/bodlogo/rengoku/uranus/Git/selection-sort/Git 10.15 merge sort/merge-sort/find/Faceless/data")
+        threshold=0.72, data_file="C:/Users/Dell/Desktop/faceless/Faceless/data/face_data.pkl")
+
     print("=" * 60)
     print("📱 AUTO FACE ID СИСТЕМ (Phone Face ID шиг)")
     print("=" * 60)
-<<<<<<< Updated upstream
-    print(f"📁 Дата файл: {system.data_file}\n")
 
-=======
-    
-    # Програм эхлэхэд автоматаар хадгалсан датаг ачаалах
+    # Өмнөх дата байвал ачаалах
     if os.path.exists(system.data_file):
         print("\n📂 Өмнөх дата олдлоо, ачаалж байна...")
         system.load_data()
     else:
         print("\n📝 Шинэ эхлэл - одоогоор хадгалсан дата байхгүй")
-    
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
+
     while True:
         print("\n📋 ҮЙЛ АЖИЛЛАГАА:")
         print("  1 - 🤖 АВТОМАТ нүүр бүртгэх (Space дарах шаардлагагүй)")
@@ -805,35 +619,21 @@ def main():
         print("  5 - Видеогоор танилт хийх")
         print("  6 - Бүртгэлтэй хүмүүсийг харах")
         print("  7 - Хүний датаг устгах")
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         print(
             "  8 - Threshold тохируулах (одоо: {:.2f})".format(system.threshold))
-        print("  0 - Гарах")
-        print("-" * 60)
-
-=======
-        print("  8 - Threshold тохируулах (одоо: {:.2f})".format(system.threshold))
         print("  9 - Бүх датаг устгах (reset)")
         print("  0 - Гарах")
         print("-" * 60)
-=======
-        print("  8 - Threshold тохируулах (одоо: {:.2f})".format(system.threshold))
-        print("  9 - Бүх датаг устгах (reset)")
-        print("  0 - Гарах")
-        print("-" * 60)
->>>>>>> Stashed changes
         if system.known_face_names:
-            print(f"💾 Одоогийн дата: {len(set(system.known_face_names))} хүн бүртгэлтэй")
+            print(
+                f"💾 Одоогийн дата: {len(set(system.known_face_names))} хүн бүртгэлтэй")
         else:
             print("⚠️ Одоогоор бүртгэлтэй хүн байхгүй")
         print("-" * 60)
-        
->>>>>>> Stashed changes
+
         choice = input("Сонголт: ").strip()
 
         if choice == '1':
-            # Бүртгэлтэй хүмүүсийг харуулах
             if system.known_face_names:
                 print("\n📋 Одоо бүртгэлтэй хүмүүс:")
                 unique_names = sorted(set(system.known_face_names))
@@ -841,7 +641,7 @@ def main():
                     count = system.known_face_names.count(person)
                     print(f"  {i}. {person} ({count} зураг)")
                 print()
-            
+
             name = input("Хүний нэр: ").strip()
             if name:
                 num = input(
@@ -852,7 +652,6 @@ def main():
                 print("❌ Нэр оруулна уу!")
 
         elif choice == '2':
-            # Бүртгэлтэй хүмүүсийг харуулах
             if system.known_face_names:
                 print("\n📋 Одоо бүртгэлтэй хүмүүс:")
                 unique_names = sorted(set(system.known_face_names))
@@ -860,7 +659,7 @@ def main():
                     count = system.known_face_names.count(person)
                     print(f"  {i}. {person} ({count} зураг)")
                 print()
-            
+
             folder = input("Зургийн фолдерын зам: ").strip()
             if folder:
                 system.collect_face_data_from_images(folder)
@@ -884,25 +683,14 @@ def main():
 
         elif choice == '7':
             system.list_people()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-            name = input("\nУстгах хүний нэр: ").strip()
-            if name:
-                if system.delete_person(name):
-                    # Устгасан бол автоматаар хадгалах
-                    system.save_data()
-
-=======
-=======
->>>>>>> Stashed changes
             if system.known_face_names:
                 name = input("\nУстгах хүний нэр: ").strip()
                 if name and system.delete_person(name):
-                    save = input("💾 Өөрчлөлтийг хадгалах уу? (y/n): ").strip().lower()
+                    save = input(
+                        "💾 Өөрчлөлтийг хадгалах уу? (y/n): ").strip().lower()
                     if save == 'y' or save == 'yes':
                         system.save_data()
-            
->>>>>>> Stashed changes
+
         elif choice == '8':
             try:
                 new_threshold = float(
@@ -915,15 +703,10 @@ def main():
                     print("❌ 0.7-0.95 хооронд утга оруулна уу!")
             except ValueError:
                 print("❌ Буруу утга!")
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 
-=======
-=======
->>>>>>> Stashed changes
-        
         elif choice == '9':
-            confirm = input("⚠️ БҮХ ДАТАГ УСТГАХ уу? Буцаах боломжгүй! (yes гэж бичнэ үү): ").strip()
+            confirm = input(
+                "⚠️ БҮХ ДАТАГ УСТГАХ уу? Буцаах боломжгүй! (yes гэж бичнэ үү): ").strip()
             if confirm.lower() == 'yes':
                 system.known_face_features = []
                 system.known_face_names = []
@@ -934,29 +717,27 @@ def main():
                     print("✅ RAM дахь дата цэвэрлэгдлээ!")
             else:
                 print("🚫 Цуцлагдлаа")
-                
->>>>>>> Stashed changes
+
         elif choice == '0':
             # Гарахын өмнө хадгалаагүй өөрчлөлт байвал сануулах
             if system.known_face_features:
-                # Файлын дата болон RAM дахь датаг харьцуулах
                 needs_save = True
                 if os.path.exists(system.data_file):
                     try:
                         with open(system.data_file, 'rb') as f:
                             saved_data = pickle.load(f)
-                            # Хэрэв RAM дахь дата нь файлын датаас ялгаатай бол
                             if (len(saved_data['names']) == len(system.known_face_names) and
-                                saved_data['names'] == system.known_face_names):
+                                    saved_data['names'] == system.known_face_names):
                                 needs_save = False
                     except:
                         needs_save = True
-                
+
                 if needs_save:
-                    save_prompt = input("\n⚠️ Хадгалаагүй өөрчлөлт байна! Хадгалах уу? (y/n): ").strip().lower()
+                    save_prompt = input(
+                        "\n⚠️ Хадгалаагүй өөрчлөлт байна! Хадгалах уу? (y/n): ").strip().lower()
                     if save_prompt == 'y' or save_prompt == 'yes':
                         system.save_data()
-            
+
             print("\n" + "=" * 60)
             print("👋 Баяртай! Нүүр таних систем хаагдаж байна...")
             print("=" * 60)
@@ -972,15 +753,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n\n🛑 Програм зогссон (Ctrl+C)")
     except Exception as e:
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         print(f"\n❌ Алдаа гарлаа: {e}")
-<<<<<<< Updated upstream
-11
-=======
-        print(f"\n❌ Алдаа гарлаа: {e}")
->>>>>>> Stashed changes
-=======
-        print(f"\n❌ Алдаа гарлаа: {e}")
-=======
->>>>>>> Stashed changes
