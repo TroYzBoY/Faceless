@@ -1,9 +1,62 @@
-import cv2
 import pickle
-import os
-import numpy as np
-from datetime import datetime
 import time
+from datetime import datetime
+import numpy as np
+import os
+
+
+def collect_face_data_from_webcam(self, name, num_samples=10):
+        """Вебкамаас нүүрний дата цуглуулах - сайжруулсан"""
+
+        # Хэрэв энэ нэртэй хүн аль хэдийн байгаа бол сануулах
+        if name in self.known_face_names:
+            print(f"⚠️ '{name}' аль хэдийн бүртгэлтэй байна!")
+            choice = input(
+                "Юу хийх вэ?\n  1 - Шинэ зураг НЭМЭХ (сайжруулах)\n  2 - Өмнөхийг СОЛИХ (устгаад шинээр)\n  3 - Цуцлах\nСонголт: ").strip()
+
+            if choice == '1':
+                print(f"✅ {name}-д шинэ зургууд нэмэх горимд орлоо")
+            elif choice == '2':
+                # Өмнөх датаг устгах
+                indices = [i for i, n in enumerate(
+                    self.known_face_names) if n == name]
+                for idx in sorted(indices, reverse=True):
+                    del self.known_face_features[idx]
+                    del self.known_face_names[idx]
+                print(f"🗑️ {name}-ын хуучин дата устгагдлаа, шинээр бүртгэнэ")
+            elif choice == '3':
+                print("🚫 Цуцлагдлаа")
+                return False
+            else:
+                print("❌ Буруу сонголт, цуцлагдлаа")
+                return False
+
+        print(f"📹 {name}-ын нүүрийг {num_samples} удаа авах гэж байна...")
+        print("💡 Өөр өөр өнцөг, гэрэлтүүлэгээр зураг авбал сайн!")
+
+        video_capture = cv2.VideoCapture(0)
+
+        if not video_capture.isOpened():
+            print("❌ Камер нээгдсэнгүй!")
+            return False
+
+        features_list = []
+        count = 0
+
+        while count < num_samples:
+            ret, frame = video_capture.read()
+            if not ret:
+                print("❌ Камераас frame уншиж чадсангүй!")
+                break
+
+            # Нүүр олох
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = self.face_cascade.detectMultiScale(
+                gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50)
+            )
+
+            # Нүүрүүдийг зурах
+            face_detected = Falseimport cv2
 
 
 class FaceRecognitionSystem:
@@ -295,6 +348,10 @@ class FaceRecognitionSystem:
 
         if not os.path.exists(images_folder):
             print(f"❌ {images_folder} олдсонгүй!")
+
+
+<< << << < Updated upstream
+<< << << < Updated upstream
             return
 
         image_files = [f for f in os.listdir(images_folder)
@@ -304,6 +361,19 @@ class FaceRecognitionSystem:
             print("❌ Зураг олдсонгүй!")
             return
 
+=======
+=======
+>>>>>>> Stashed changes
+            return False
+        
+        image_files = [f for f in os.listdir(images_folder) 
+                      if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp"))]
+        
+        if not image_files:
+            print("❌ Зураг олдсонгүй!")
+            return False
+        
+>>>>>>> Stashed changes
         success_count = 0
         for filename in image_files:
             image_path = os.path.join(images_folder, filename)
@@ -336,7 +406,120 @@ class FaceRecognitionSystem:
                 print(f"⚠️ {filename}-д нүүр олдсонгүй")
 
         print(f"\n📊 Нийт: {success_count}/{len(image_files)} нүүр таниулсан")
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
+=======
+=======
+>>>>>>> Stashed changes
+        
+        # Автоматаар хадгалах эсэхийг асуух
+        if success_count > 0:
+            save = input("\n💾 Одоо хадгалах уу? (y/n): ").strip().lower()
+            if save == 'y' or save == 'yes':
+                self.save_data()
+        
+        return success_count > 0
+    
+    def collect_face_data_from_webcam(self, name, num_samples=10):
+        """Вебкамаас нүүрний дата цуглуулах - сайжруулсан"""
+        print(f"📹 {name}-ын нүүрийг {num_samples} удаа авах гэж байна...")
+        print("💡 Өөр өөр өнцөг, гэрэлтүүлэгээр зураг авбал сайн!")
+        
+        video_capture = cv2.VideoCapture(0)
+        
+        if not video_capture.isOpened():
+            print("❌ Камер нээгдсэнгүй!")
+            return False
+        
+        features_list = []
+        count = 0
+        
+        while count < num_samples:
+            ret, frame = video_capture.read()
+            if not ret:
+                print("❌ Камераас frame уншиж чадсангүй!")
+                break
+            
+            # Нүүр олох
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = self.face_cascade.detectMultiScale(
+                gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50)
+            )
+            
+            # Нүүрүүдийг зурах
+            face_detected = False
+            for (x, y, w, h) in faces:
+                face_detected = True
+                cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                
+                # Нүдийг олох
+                roi_gray = gray[y:y+h, x:x+w]
+                eyes = self.eye_cascade.detectMultiScale(roi_gray, minNeighbors=8)
+                for (ex, ey, ew, eh) in eyes:
+                    cv2.circle(frame, (x+ex+ew//2, y+ey+eh//2), ew//2, (255, 0, 0), 2)
+            
+            # Прогресс мэдээлэл
+            progress_text = f"Авсан: {count}/{num_samples}"
+            cv2.putText(frame, progress_text, (10, 30),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            
+            instruction = "SPACE - зураг авах | Q - гарах"
+            cv2.putText(frame, instruction, (10, 60),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            
+            if face_detected:
+                status = "✓ Нүүр олдлоо! SPACE дарна уу"
+                color = (0, 255, 0)
+            else:
+                status = "✗ Нүүр олохыг оролдож байна..."
+                color = (0, 0, 255)
+            
+            cv2.putText(frame, status, (10, 90),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            
+            cv2.imshow('Нүүр таниулах', frame)
+            
+            key = cv2.waitKey(1) & 0xFF
+            
+            # Space дарахад зураг авах
+            if key == ord(' ') and len(faces) > 0:
+                face = max(faces, key=lambda rect: rect[2] * rect[3])
+                features = self.extract_face_features(frame, face)
+                
+                if features is not None:
+                    features_list.append(features)
+                    count += 1
+                    print(f"✅ Зураг {count}/{num_samples} авлаа!")
+                else:
+                    print("⚠️ Features гаргаж чадсангүй, дахин оролдоно уу")
+            
+            # Q дарахад гарах
+            elif key == ord('q'):
+                print("🚫 Цуцлагдлаа")
+                break
+        
+        video_capture.release()
+        cv2.destroyAllWindows()
+        
+        # Дундаж features авах
+        if len(features_list) >= 3:  # Хамгийн багадаа 3 зураг
+            avg_features = np.mean(features_list, axis=0)
+            self.known_face_features.append(avg_features)
+            self.known_face_names.append(name)
+            print(f"✅ {name} амжилттай таниулсан! ({len(features_list)} зураг)")
+            
+            # Автоматаар хадгалах эсэхийг асуух
+            save = input("\n💾 Одоо хадгалах уу? (y/n): ").strip().lower()
+            if save == 'y' or save == 'yes':
+                self.save_data()
+            
+            return True
+        else:
+            print(f"❌ Хангалттай зураг аваагүй! ({len(features_list)}/{num_samples})")
+            return False
+    
+>>>>>>> Stashed changes
     def save_data(self):
         """Нүүрний датаг файлд хадгалах"""
         try:
@@ -597,25 +780,68 @@ def main():
     print("=" * 60)
     print("📱 AUTO FACE ID СИСТЕМ (Phone Face ID шиг)")
     print("=" * 60)
+<<<<<<< Updated upstream
     print(f"📁 Дата файл: {system.data_file}\n")
 
+=======
+    
+    # Програм эхлэхэд автоматаар хадгалсан датаг ачаалах
+    if os.path.exists(system.data_file):
+        print("\n📂 Өмнөх дата олдлоо, ачаалж байна...")
+        system.load_data()
+    else:
+        print("\n📝 Шинэ эхлэл - одоогоор хадгалсан дата байхгүй")
+    
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
     while True:
         print("\n📋 ҮЙЛ АЖИЛЛАГАА:")
         print("  1 - 🤖 АВТОМАТ нүүр бүртгэх (Space дарах шаардлагагүй)")
         print("  2 - Зургийн фолдероос дата цуглуулах")
-        print("  3 - Датаг хадгалах")
-        print("  4 - Датаг ачаалах")
+        print("  3 - Датаг хадгалах (гараар)")
+        print("  4 - Датаг дахин ачаалах")
         print("  5 - Видеогоор танилт хийх")
         print("  6 - Бүртгэлтэй хүмүүсийг харах")
         print("  7 - Хүний датаг устгах")
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
         print(
             "  8 - Threshold тохируулах (одоо: {:.2f})".format(system.threshold))
         print("  0 - Гарах")
         print("-" * 60)
 
+=======
+        print("  8 - Threshold тохируулах (одоо: {:.2f})".format(system.threshold))
+        print("  9 - Бүх датаг устгах (reset)")
+        print("  0 - Гарах")
+        print("-" * 60)
+=======
+        print("  8 - Threshold тохируулах (одоо: {:.2f})".format(system.threshold))
+        print("  9 - Бүх датаг устгах (reset)")
+        print("  0 - Гарах")
+        print("-" * 60)
+>>>>>>> Stashed changes
+        if system.known_face_names:
+            print(f"💾 Одоогийн дата: {len(set(system.known_face_names))} хүн бүртгэлтэй")
+        else:
+            print("⚠️ Одоогоор бүртгэлтэй хүн байхгүй")
+        print("-" * 60)
+        
+>>>>>>> Stashed changes
         choice = input("Сонголт: ").strip()
 
         if choice == '1':
+            # Бүртгэлтэй хүмүүсийг харуулах
+            if system.known_face_names:
+                print("\n📋 Одоо бүртгэлтэй хүмүүс:")
+                unique_names = sorted(set(system.known_face_names))
+                for i, person in enumerate(unique_names, 1):
+                    count = system.known_face_names.count(person)
+                    print(f"  {i}. {person} ({count} зураг)")
+                print()
+            
             name = input("Хүний нэр: ").strip()
             if name:
                 num = input(
@@ -626,6 +852,15 @@ def main():
                 print("❌ Нэр оруулна уу!")
 
         elif choice == '2':
+            # Бүртгэлтэй хүмүүсийг харуулах
+            if system.known_face_names:
+                print("\n📋 Одоо бүртгэлтэй хүмүүс:")
+                unique_names = sorted(set(system.known_face_names))
+                for i, person in enumerate(unique_names, 1):
+                    count = system.known_face_names.count(person)
+                    print(f"  {i}. {person} ({count} зураг)")
+                print()
+            
             folder = input("Зургийн фолдерын зам: ").strip()
             if folder:
                 system.collect_face_data_from_images(folder)
@@ -649,12 +884,25 @@ def main():
 
         elif choice == '7':
             system.list_people()
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
             name = input("\nУстгах хүний нэр: ").strip()
             if name:
                 if system.delete_person(name):
                     # Устгасан бол автоматаар хадгалах
                     system.save_data()
 
+=======
+=======
+>>>>>>> Stashed changes
+            if system.known_face_names:
+                name = input("\nУстгах хүний нэр: ").strip()
+                if name and system.delete_person(name):
+                    save = input("💾 Өөрчлөлтийг хадгалах уу? (y/n): ").strip().lower()
+                    if save == 'y' or save == 'yes':
+                        system.save_data()
+            
+>>>>>>> Stashed changes
         elif choice == '8':
             try:
                 new_threshold = float(
@@ -667,8 +915,48 @@ def main():
                     print("❌ 0.7-0.95 хооронд утга оруулна уу!")
             except ValueError:
                 print("❌ Буруу утга!")
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
+=======
+=======
+>>>>>>> Stashed changes
+        
+        elif choice == '9':
+            confirm = input("⚠️ БҮХ ДАТАГ УСТГАХ уу? Буцаах боломжгүй! (yes гэж бичнэ үү): ").strip()
+            if confirm.lower() == 'yes':
+                system.known_face_features = []
+                system.known_face_names = []
+                if os.path.exists(system.data_file):
+                    os.remove(system.data_file)
+                    print("✅ Бүх дата устгагдлаа!")
+                else:
+                    print("✅ RAM дахь дата цэвэрлэгдлээ!")
+            else:
+                print("🚫 Цуцлагдлаа")
+                
+>>>>>>> Stashed changes
         elif choice == '0':
+            # Гарахын өмнө хадгалаагүй өөрчлөлт байвал сануулах
+            if system.known_face_features:
+                # Файлын дата болон RAM дахь датаг харьцуулах
+                needs_save = True
+                if os.path.exists(system.data_file):
+                    try:
+                        with open(system.data_file, 'rb') as f:
+                            saved_data = pickle.load(f)
+                            # Хэрэв RAM дахь дата нь файлын датаас ялгаатай бол
+                            if (len(saved_data['names']) == len(system.known_face_names) and
+                                saved_data['names'] == system.known_face_names):
+                                needs_save = False
+                    except:
+                        needs_save = True
+                
+                if needs_save:
+                    save_prompt = input("\n⚠️ Хадгалаагүй өөрчлөлт байна! Хадгалах уу? (y/n): ").strip().lower()
+                    if save_prompt == 'y' or save_prompt == 'yes':
+                        system.save_data()
+            
             print("\n" + "=" * 60)
             print("👋 Баяртай! Нүүр таних систем хаагдаж байна...")
             print("=" * 60)
@@ -684,4 +972,12 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n\n🛑 Програм зогссон (Ctrl+C)")
     except Exception as e:
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+        print(f"\n❌ Алдаа гарлаа: {e}")
+11
+=======
+        print(f"\n❌ Алдаа гарлаа: {e}")
+>>>>>>> Stashed changes
+=======
         print(f"\n❌ Алдаа гарлаа: {e}")
