@@ -1072,3 +1072,4 @@ if __name__ == "__main__":
         print(f"\n❌ Алдаа: {e}")
         import traceback
         traceback.print_exc()
+        1
