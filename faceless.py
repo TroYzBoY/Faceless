@@ -1,10 +1,752 @@
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
 import cv2
+from PIL import Image, ImageTk
 import pickle
 import time
 from datetime import datetime
 import numpy as np
 import os
 from collections import Counter
+import threading
+
+
+class FaceRecognitionGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("🎯 Нүүр таних систем")
+        self.root.geometry("1200x800")
+        self.root.configure(bg='#1e1e2e')
+        
+        # Initialize face recognition system
+        self.known_face_features = []
+        self.known_face_names = []
+        self.data_file = "face_data.pkl"
+        self.threshold = 0.72
+        
+        # OpenCV cascades
+        cascade_path = cv2.data.haarcascades
+        self.face_cascade = cv2.CascadeClassifier(
+            cascade_path + 'haarcascade_frontalface_default.xml')
+        self.eye_cascade = cv2.CascadeClassifier(
+            cascade_path + 'haarcascade_eye.xml')
+        
+        # Video capture variables
+        self.video_capture = None
+        self.is_capturing = False
+        self.current_mode = None  # 'register' or 'recognize'
+        
+        self.setup_ui()
+        self.load_data_silent()
+    
+    def setup_ui(self):
+        """Setup the user interface"""
+        # Title bar
+        title_frame = tk.Frame(self.root, bg='#2d2d44', height=80)
+        title_frame.pack(fill='x', pady=(0, 10))
+        
+        title_label = tk.Label(
+            title_frame, 
+            text="📱 AUTO FACE ID СИСТЕМ", 
+            font=('Helvetica', 24, 'bold'),
+            bg='#2d2d44',
+            fg='#00ff88'
+        )
+        title_label.pack(pady=20)
+        
+        # Main container
+        main_container = tk.Frame(self.root, bg='#1e1e2e')
+        main_container.pack(fill='both', expand=True, padx=20, pady=10)
+        
+        # Left panel - Controls
+        left_panel = tk.Frame(main_container, bg='#2d2d44', width=350)
+        left_panel.pack(side='left', fill='both', padx=(0, 10))
+        
+        # Control buttons
+        control_frame = tk.LabelFrame(
+            left_panel, 
+            text="⚙️ Үндсэн үйлдлүүд", 
+            font=('Helvetica', 12, 'bold'),
+            bg='#2d2d44',
+            fg='#ffffff',
+            padx=15,
+            pady=15
+        )
+        control_frame.pack(fill='x', pady=10, padx=10)
+        
+        # Register button
+        self.register_btn = self.create_button(
+            control_frame, 
+            "🤖 Нүүр бүртгэх", 
+            self.start_registration,
+            '#00ff88'
+        )
+        self.register_btn.pack(fill='x', pady=5)
+        
+        # Recognize button
+        self.recognize_btn = self.create_button(
+            control_frame, 
+            "🎥 Танилт эхлүүлэх", 
+            self.start_recognition,
+            '#00aaff'
+        )
+        self.recognize_btn.pack(fill='x', pady=5)
+        
+        # Stop button
+        self.stop_btn = self.create_button(
+            control_frame, 
+            "⏹️ Зогсоох", 
+            self.stop_capture,
+            '#ff4444'
+        )
+        self.stop_btn.pack(fill='x', pady=5)
+        self.stop_btn.config(state='disabled')
+        
+        # Data management
+        data_frame = tk.LabelFrame(
+            left_panel, 
+            text="💾 Дата удирдлага", 
+            font=('Helvetica', 12, 'bold'),
+            bg='#2d2d44',
+            fg='#ffffff',
+            padx=15,
+            pady=15
+        )
+        data_frame.pack(fill='x', pady=10, padx=10)
+        
+        self.create_button(
+            data_frame, 
+            "📂 Дата ачаалах", 
+            self.load_data,
+            '#9966ff'
+        ).pack(fill='x', pady=5)
+        
+        self.create_button(
+            data_frame, 
+            "💾 Дата хадгалах", 
+            self.save_data,
+            '#9966ff'
+        ).pack(fill='x', pady=5)
+        
+        self.create_button(
+            data_frame, 
+            "👥 Хүмүүсийг харах", 
+            self.show_people_list,
+            '#ff9500'
+        ).pack(fill='x', pady=5)
+        
+        self.create_button(
+            data_frame, 
+            "🗑️ Хүн устгах", 
+            self.delete_person,
+            '#ff4444'
+        ).pack(fill='x', pady=5)
+        
+        # Settings
+        settings_frame = tk.LabelFrame(
+            left_panel, 
+            text="⚙️ Тохиргоо", 
+            font=('Helvetica', 12, 'bold'),
+            bg='#2d2d44',
+            fg='#ffffff',
+            padx=15,
+            pady=15
+        )
+        settings_frame.pack(fill='x', pady=10, padx=10)
+        
+        # Threshold slider
+        tk.Label(
+            settings_frame, 
+            text="Threshold:", 
+            bg='#2d2d44', 
+            fg='#ffffff',
+            font=('Helvetica', 10)
+        ).pack(anchor='w')
+        
+        self.threshold_var = tk.DoubleVar(value=self.threshold)
+        threshold_slider = ttk.Scale(
+            settings_frame,
+            from_=0.70,
+            to=0.95,
+            variable=self.threshold_var,
+            orient='horizontal',
+            command=self.update_threshold
+        )
+        threshold_slider.pack(fill='x', pady=5)
+        
+        self.threshold_label = tk.Label(
+            settings_frame,
+            text=f"Утга: {self.threshold:.2f}",
+            bg='#2d2d44',
+            fg='#00ff88',
+            font=('Helvetica', 9)
+        )
+        self.threshold_label.pack()
+        
+        # Status info
+        status_frame = tk.LabelFrame(
+            left_panel, 
+            text="📊 Мэдээлэл", 
+            font=('Helvetica', 12, 'bold'),
+            bg='#2d2d44',
+            fg='#ffffff',
+            padx=15,
+            pady=15
+        )
+        status_frame.pack(fill='both', expand=True, pady=10, padx=10)
+        
+        self.status_text = tk.Text(
+            status_frame,
+            height=10,
+            bg='#1e1e2e',
+            fg='#ffffff',
+            font=('Courier', 9),
+            wrap='word',
+            state='disabled'
+        )
+        self.status_text.pack(fill='both', expand=True)
+        
+        # Right panel - Video feed
+        right_panel = tk.Frame(main_container, bg='#2d2d44')
+        right_panel.pack(side='right', fill='both', expand=True)
+        
+        video_label_frame = tk.LabelFrame(
+            right_panel,
+            text="📹 Видео",
+            font=('Helvetica', 12, 'bold'),
+            bg='#2d2d44',
+            fg='#ffffff'
+        )
+        video_label_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        self.video_label = tk.Label(
+            video_label_frame,
+            bg='#1e1e2e',
+            text="Видео зогссон байна\n\n🎥 'Нүүр бүртгэх' эсвэл 'Танилт эхлүүлэх' дарна уу",
+            font=('Helvetica', 14),
+            fg='#666666'
+        )
+        self.video_label.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        self.update_status_display()
+    
+    def create_button(self, parent, text, command, color):
+        """Create a styled button"""
+        btn = tk.Button(
+            parent,
+            text=text,
+            command=command,
+            bg=color,
+            fg='#ffffff',
+            font=('Helvetica', 11, 'bold'),
+            relief='flat',
+            cursor='hand2',
+            height=2,
+            activebackground=self.lighten_color(color)
+        )
+        return btn
+    
+    def lighten_color(self, color):
+        """Lighten a hex color"""
+        # Simple color lightening
+        if color == '#00ff88':
+            return '#33ff99'
+        elif color == '#00aaff':
+            return '#33bbff'
+        elif color == '#ff4444':
+            return '#ff6666'
+        elif color == '#9966ff':
+            return '#aa77ff'
+        elif color == '#ff9500':
+            return '#ffaa33'
+        return color
+    
+    def update_status(self, message, clear=False):
+        """Update status text"""
+        self.status_text.config(state='normal')
+        if clear:
+            self.status_text.delete(1.0, tk.END)
+        self.status_text.insert(tk.END, f"{message}\n")
+        self.status_text.see(tk.END)
+        self.status_text.config(state='disabled')
+    
+    def update_status_display(self):
+        """Update the status information"""
+        self.update_status("", clear=True)
+        if self.known_face_names:
+            name_counts = Counter(self.known_face_names)
+            self.update_status(f"👥 Бүртгэлтэй: {len(name_counts)} хүн")
+            self.update_status(f"📊 Нийт зураг: {len(self.known_face_names)}")
+            self.update_status(f"🎯 Threshold: {self.threshold:.2f}\n")
+            self.update_status("Хүмүүс:")
+            for name, count in sorted(name_counts.items()):
+                self.update_status(f"  • {name}: {count} зураг")
+        else:
+            self.update_status("⚠️ Бүртгэлтэй хүн байхгүй")
+    
+    def update_threshold(self, value):
+        """Update threshold value"""
+        self.threshold = float(value)
+        self.threshold_label.config(text=f"Утга: {self.threshold:.2f}")
+    
+    def start_registration(self):
+        """Start face registration process"""
+        if self.is_capturing:
+            messagebox.showwarning("Анхааруулга", "Өөр үйлдэл явагдаж байна!")
+            return
+        
+        # Get name dialog
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Нэр оруулах")
+        dialog.geometry("400x200")
+        dialog.configure(bg='#2d2d44')
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        tk.Label(
+            dialog,
+            text="Хүний нэр оруулна уу:",
+            font=('Helvetica', 12),
+            bg='#2d2d44',
+            fg='#ffffff'
+        ).pack(pady=20)
+        
+        name_entry = tk.Entry(
+            dialog,
+            font=('Helvetica', 12),
+            width=30
+        )
+        name_entry.pack(pady=10)
+        name_entry.focus()
+        
+        def submit():
+            name = name_entry.get().strip()
+            if name:
+                dialog.destroy()
+                self.current_mode = 'register'
+                self.register_name = name
+                self.register_samples = 10
+                threading.Thread(target=self.register_face_thread, daemon=True).start()
+            else:
+                messagebox.showerror("Алдаа", "Нэр оруулна уу!")
+        
+        tk.Button(
+            dialog,
+            text="✓ Эхлүүлэх",
+            command=submit,
+            bg='#00ff88',
+            fg='#ffffff',
+            font=('Helvetica', 11, 'bold'),
+            cursor='hand2',
+            height=2
+        ).pack(pady=10)
+        
+        name_entry.bind('<Return>', lambda e: submit())
+    
+    def register_face_thread(self):
+        """Register face in separate thread"""
+        self.is_capturing = True
+        self.register_btn.config(state='disabled')
+        self.recognize_btn.config(state='disabled')
+        self.stop_btn.config(state='normal')
+        
+        self.update_status(f"\n📱 {self.register_name} бүртгэж байна...")
+        
+        self.video_capture = cv2.VideoCapture(0)
+        
+        features_list = []
+        count = 0
+        face_positions = []
+        last_capture_time = time.time()
+        stable_frames = 0
+        
+        while count < self.register_samples and self.is_capturing:
+            ret, frame = self.video_capture.read()
+            if not ret:
+                break
+            
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = self.face_cascade.detectMultiScale(
+                gray, scaleFactor=1.1, minNeighbors=5,
+                minSize=(100, 100), maxSize=(400, 400)
+            )
+            
+            current_time = time.time()
+            
+            for (x, y, w, h) in faces:
+                roi_gray = gray[y:y+h, x:x+w]
+                eyes = self.eye_cascade.detectMultiScale(roi_gray, minNeighbors=8)
+                has_eyes = len(eyes) >= 2
+                
+                face_center = (x + w//2, y + h//2)
+                is_new_angle = self.is_new_angle(face_center, face_positions)
+                
+                if has_eyes and is_new_angle:
+                    color = (0, 255, 0)
+                    stable_frames += 1
+                    ready = stable_frames >= 3
+                else:
+                    color = (0, 255, 255) if has_eyes else (0, 165, 255)
+                    stable_frames = 0
+                    ready = False
+                
+                cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+                
+                if ready and current_time - last_capture_time >= 0.5:
+                    features = self.extract_face_features(frame, (x, y, w, h))
+                    if features is not None:
+                        features_list.append(features)
+                        face_positions.append(face_center)
+                        count += 1
+                        last_capture_time = current_time
+                        stable_frames = 0
+                        self.update_status(f"📸 {count}/{self.register_samples} авлаа!")
+            
+            # Draw progress
+            self.draw_progress(frame, count, self.register_samples)
+            
+            # Display frame
+            self.display_frame(frame)
+            
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        
+        self.video_capture.release()
+        
+        if len(features_list) >= 3:
+            for features in features_list:
+                self.known_face_features.append(features)
+                self.known_face_names.append(self.register_name)
+            
+            self.update_status(f"✅ {self.register_name} амжилттай бүртгэгдлээ!")
+            self.save_data()
+            self.update_status_display()
+        else:
+            self.update_status(f"❌ Хангалттай зураг аваагүй!")
+        
+        self.stop_capture()
+    
+    def start_recognition(self):
+        """Start face recognition"""
+        if not self.known_face_features:
+            messagebox.showwarning("Анхааруулга", "Эхлээд дата ачаална уу!")
+            return
+        
+        if self.is_capturing:
+            messagebox.showwarning("Анхааруулга", "Өөр үйлдэл явагдаж байна!")
+            return
+        
+        self.current_mode = 'recognize'
+        self.is_capturing = True
+        self.register_btn.config(state='disabled')
+        self.recognize_btn.config(state='disabled')
+        self.stop_btn.config(state='normal')
+        
+        self.update_status("\n🎥 Танилт эхэллээ...")
+        
+        threading.Thread(target=self.recognize_thread, daemon=True).start()
+    
+    def recognize_thread(self):
+        """Recognition thread"""
+        self.video_capture = cv2.VideoCapture(0)
+        
+        frame_count = 0
+        last_results = {}
+        
+        while self.is_capturing:
+            ret, frame = self.video_capture.read()
+            if not ret:
+                break
+            
+            frame_count += 1
+            
+            if frame_count % 3 == 0:
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                faces = self.face_cascade.detectMultiScale(
+                    gray, scaleFactor=1.2, minNeighbors=5,
+                    minSize=(60, 60), maxSize=(400, 400)
+                )
+                
+                new_results = {}
+                
+                for face_id, (x, y, w, h) in enumerate(faces):
+                    features = self.extract_face_features(frame, (x, y, w, h))
+                    
+                    if features is not None:
+                        name, confidence = self.find_best_match(features)
+                        new_results[face_id] = (x, y, w, h, name, confidence)
+                
+                last_results = new_results
+            
+            # Draw results
+            for face_id, (x, y, w, h, name, confidence) in last_results.items():
+                color = self.get_color(name, confidence)
+                cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+                
+                label_y = y - 10 if y - 10 > 10 else y + h + 20
+                cv2.rectangle(frame, (x, label_y - 25), (x+w, label_y), color, -1)
+                
+                text = f"{name} ({confidence:.0f}%)" if name != "Танигдаагүй" else name
+                cv2.putText(frame, text, (x + 5, label_y - 5),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            
+            self.display_frame(frame)
+            
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        
+        self.video_capture.release()
+        self.stop_capture()
+    
+    def stop_capture(self):
+        """Stop video capture"""
+        self.is_capturing = False
+        if self.video_capture:
+            self.video_capture.release()
+        
+        self.register_btn.config(state='normal')
+        self.recognize_btn.config(state='normal')
+        self.stop_btn.config(state='disabled')
+        
+        # Clear video label
+        self.video_label.config(
+            image='',
+            text="Видео зогссон байна\n\n🎥 'Нүүр бүртгэх' эсвэл 'Танилт эхлүүлэх' дарна уу"
+        )
+    
+    def display_frame(self, frame):
+        """Display frame in GUI"""
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(frame_rgb)
+        
+        # Resize to fit
+        max_width = 800
+        max_height = 600
+        img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+        
+        imgtk = ImageTk.PhotoImage(image=img)
+        self.video_label.imgtk = imgtk
+        self.video_label.config(image=imgtk, text='')
+    
+    def draw_progress(self, frame, current, total):
+        """Draw progress bar"""
+        bar_width = frame.shape[1] - 40
+        bar_height = 30
+        bar_x, bar_y = 20, frame.shape[0] - 50
+        
+        cv2.rectangle(frame, (bar_x-5, bar_y-5),
+                     (bar_x + bar_width + 5, bar_y + bar_height + 5),
+                     (50, 50, 50), -1)
+        
+        progress = int((current / total) * bar_width)
+        cv2.rectangle(frame, (bar_x, bar_y),
+                     (bar_x + progress, bar_y + bar_height),
+                     (0, 255, 0), -1)
+        
+        text = f"{current}/{total}"
+        cv2.putText(frame, text, (bar_x + bar_width//2 - 30, bar_y + 20),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+    
+    def is_new_angle(self, face_center, face_positions, min_diff=20):
+        """Check if face position is new"""
+        for prev_pos in face_positions:
+            distance = np.sqrt((face_center[0] - prev_pos[0])**2 +
+                             (face_center[1] - prev_pos[1])**2)
+            if distance < min_diff:
+                return False
+        return True
+    
+    def extract_face_features(self, image, face_rect):
+        """Extract face features"""
+        try:
+            x, y, w, h = face_rect
+            face = image[y:y+h, x:x+w]
+            face_resized = cv2.resize(face, (100, 100))
+            
+            if len(face_resized.shape) == 3:
+                gray_face = cv2.cvtColor(face_resized, cv2.COLOR_BGR2GRAY)
+            else:
+                gray_face = face_resized
+            
+            gray_face = cv2.equalizeHist(gray_face)
+            hist = cv2.calcHist([gray_face], [0], None, [256], [0, 256])
+            hist = cv2.normalize(hist, hist).flatten()
+            
+            return hist
+        except:
+            return None
+    
+    def find_best_match(self, features):
+        """Find best matching face"""
+        max_similarity = 0
+        best_match_name = "Танигдаагүй"
+        
+        for idx, known_features in enumerate(self.known_face_features):
+            similarity = np.dot(features, known_features) / (
+                np.linalg.norm(features) * np.linalg.norm(known_features) + 1e-6
+            )
+            
+            if similarity > max_similarity:
+                max_similarity = similarity
+                best_match_name = self.known_face_names[idx]
+        
+        if max_similarity > self.threshold:
+            return best_match_name, max_similarity * 100
+        else:
+            return "Танигдаагүй", 0
+    
+    def get_color(self, name, confidence):
+        """Get color based on confidence"""
+        if name != "Танигдаагүй":
+            if confidence > 90:
+                return (0, 255, 0)
+            elif confidence > 85:
+                return (0, 255, 255)
+            else:
+                return (0, 165, 255)
+        return (0, 0, 255)
+    
+    def save_data(self):
+        """Save face data"""
+        if not self.known_face_features:
+            messagebox.showwarning("Анхааруулга", "Хадгалах дата байхгүй!")
+            return
+        
+        try:
+            data = {
+                'features': self.known_face_features,
+                'names': self.known_face_names,
+                'threshold': self.threshold,
+                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            with open(self.data_file, 'wb') as f:
+                pickle.dump(data, f)
+            
+            self.update_status("💾 Дата хадгалагдлаа!")
+            messagebox.showinfo("Амжилт", "Дата хадгалагдлаа!")
+        except Exception as e:
+            messagebox.showerror("Алдаа", f"Хадгалахад алдаа: {e}")
+    
+    def load_data_silent(self):
+        """Load data silently on startup"""
+        if os.path.exists(self.data_file):
+            try:
+                with open(self.data_file, 'rb') as f:
+                    data = pickle.load(f)
+                    self.known_face_features = data['features']
+                    self.known_face_names = data['names']
+                    if 'threshold' in data:
+                        self.threshold = data['threshold']
+                        self.threshold_var.set(self.threshold)
+            except:
+                pass
+    
+    def load_data(self):
+        """Load face data"""
+        if not os.path.exists(self.data_file):
+            messagebox.showwarning("Анхааруулга", "Дата файл олдсонгүй!")
+            return
+        
+        try:
+            with open(self.data_file, 'rb') as f:
+                data = pickle.load(f)
+                self.known_face_features = data['features']
+                self.known_face_names = data['names']
+                if 'threshold' in data:
+                    self.threshold = data['threshold']
+                    self.threshold_var.set(self.threshold)
+            
+            self.update_status_display()
+            messagebox.showinfo("Амжилт", "Дата ачаалагдлаа!")
+        except Exception as e:
+            messagebox.showerror("Алдаа", f"Ачаалахад алдаа: {e}")
+    
+    def show_people_list(self):
+        """Show list of registered people"""
+        if not self.known_face_names:
+            messagebox.showinfo("Мэдээлэл", "Бүртгэлтэй хүн байхгүй")
+            return
+        
+        name_counts = Counter(self.known_face_names)
+        
+        message = "📋 Бүртгэлтэй хүмүүс:\n\n"
+        for name, count in sorted(name_counts.items()):
+            message += f"👤 {name}: {count} зураг\n"
+        
+        messagebox.showinfo("Бүртгэлтэй хүмүүс", message)
+    
+    def delete_person(self):
+        """Delete a person"""
+        if not self.known_face_names:
+            messagebox.showinfo("Мэдээлэл", "Бүртгэлтэй хүн байхгүй")
+            return
+        
+        # Create dialog
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Хүн устгах")
+        dialog.geometry("400x300")
+        dialog.configure(bg='#2d2d44')
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        tk.Label(
+            dialog,
+            text="Устгах хүнийг сонгоно уу:",
+            font=('Helvetica', 12),
+            bg='#2d2d44',
+            fg='#ffffff'
+        ).pack(pady=20)
+        
+        name_counts = Counter(self.known_face_names)
+        names = sorted(name_counts.keys())
+        
+        listbox = tk.Listbox(
+            dialog,
+            font=('Helvetica', 11),
+            height=8
+        )
+        listbox.pack(fill='both', expand=True, padx=20, pady=10)
+        
+        for name in names:
+            listbox.insert(tk.END, f"{name} ({name_counts[name]} зураг)")
+        
+        def delete_selected():
+            selection = listbox.curselection()
+            if not selection:
+                messagebox.showwarning("Анхааруулга", "Хүн сонгоно уу!")
+                return
+            
+            name = names[selection[0]]
+            
+            indices = [i for i, n in enumerate(self.known_face_names) if n == name]
+            for idx in sorted(indices, reverse=True):
+                del self.known_face_features[idx]
+                del self.known_face_names[idx]
+            
+            self.update_status(f"🗑️ {name} устгагдлаа!")
+            self.save_data()
+            self.update_status_display()
+            dialog.destroy()
+        
+        tk.Button(
+            dialog,
+            text="🗑️ Устгах",
+            command=delete_selected,
+            bg='#ff4444',
+            fg='#ffffff',
+            font=('Helvetica', 11, 'bold'),
+            cursor='hand2'
+        ).pack(pady=10)
+
+
+def main():
+    root = tk.Tk()
+    app = FaceRecognitionGUI(root)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
 
 
 class FaceRecognitionSystem:
@@ -597,7 +1339,7 @@ class FaceRecognitionSystem:
 def main():
     # Энгийн файлын нэр ашиглах - одоогийн фолдерт хадгална
     system = FaceRecognitionSystem(
-        threshold=0.72, data_file="C:/Users/Dell/Desktop/faceless/Faceless/data/face_data.pkl")
+        threshold=0.72, data_file="C:/Users/troyz/OneDrive/Desktop/faceless/data/face_data.pkl")
 
     print("=" * 60)
     print("📱 AUTO FACE ID СИСТЕМ (Phone Face ID шиг)")
