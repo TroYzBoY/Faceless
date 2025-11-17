@@ -17,21 +17,45 @@ import os
 from collections import Counter
 import threading
 import json
+import platform
+import sys
 
 
 class EnhancedFaceRecognitionSystem:
     def __init__(self, root):
         self.root = root
         self.root.title("🎯 AI Нүүр таних систем - Enhanced")
-        self.root.geometry("1400x900")
-        self.root.configure(bg='#0a0e27')
+        self.root.geometry("1200x700")
+        
+        # Detect OS
+        self.is_macos = platform.system() == 'Darwin'
+        self.is_windows = platform.system() == 'Windows'
+        
+        # Set macOS-specific configurations
+        if self.is_macos:
+            # macOS-specific settings
+            try:
+                # Try to use native macOS appearance
+                # Note: Scaling is handled automatically by macOS
+                pass
+            except:
+                pass
+        
+        # Color scheme (works on both Windows and macOS)
+        self.bg_dark = '#0a0e27'
+        self.bg_panel = '#1a1f3a'
+        self.fg_primary = '#00ff9f'
+        self.fg_secondary = '#ffffff'
+        self.fg_muted = '#666699'
+        
+        self.root.configure(bg=self.bg_dark)
         
         # Face data storage
         self.known_face_features = []
         self.known_face_names = []
         self.face_quality_scores = []
         self.data_file = "enhanced_face_data.pkl"
-        self.threshold = 0.68
+        self.threshold = 0.65  # Lowered threshold for better recognition
         
         # Initialize OpenCV
         cascade_path = cv2.data.haarcascades
@@ -49,47 +73,76 @@ class EnhancedFaceRecognitionSystem:
         self.setup_ui()
         self.load_data_silent()
     
+    def get_font(self, size, weight='normal'):
+        """Get platform-appropriate font"""
+        if self.is_macos:
+            # macOS fonts - try SF Pro first, fallback to system fonts
+            try:
+                if weight == 'bold':
+                    # Try SF Pro Display, fallback to Helvetica
+                    return ('SF Pro Display', size, 'bold')
+                else:
+                    # Try SF Pro Text, fallback to Helvetica
+                    return ('SF Pro Text', size)
+            except:
+                # Fallback to system fonts
+                if weight == 'bold':
+                    return ('Helvetica Neue', size, 'bold')
+                else:
+                    return ('Helvetica Neue', size)
+        elif self.is_windows:
+            # Windows fonts
+            if weight == 'bold':
+                return ('Segoe UI', size, 'bold')
+            else:
+                return ('Segoe UI', size)
+        else:
+            # Linux/Other
+            return ('DejaVu Sans', size, weight)
+    
     def setup_ui(self):
-        """Setup modern UI"""
+        """Setup modern UI with macOS compatibility"""
         # Title bar
-        title_frame = tk.Frame(self.root, bg='#1a1f3a', height=90)
+        title_frame = tk.Frame(self.root, bg=self.bg_panel, height=90)
         title_frame.pack(fill='x', pady=(0, 10))
         
         title_label = tk.Label(
             title_frame, 
-            text="🚀 AI НҮҮР ТАНИХ СИСТЕМ", 
-            font=('Segoe UI', 26, 'bold'),
-            bg='#1a1f3a',
-            fg='#00ff9f'
+            text="🚀 TEAM TAM НҮҮР ТАНИХ СИСТЕМ", 
+            font=self.get_font(26, 'bold'),
+            bg=self.bg_panel,
+            fg=self.fg_primary
         )
         title_label.pack(pady=15)
         
         mode_label = tk.Label(
             title_frame,
             text="🟢 ENHANCED MODE (OpenCV + Deep Features)",
-            font=('Segoe UI', 10, 'bold'),
-            bg='#1a1f3a',
-            fg='#00ff9f'
+            font=self.get_font(10, 'bold'),
+            bg=self.bg_panel,
+            fg=self.fg_primary
         )
         mode_label.pack()
         
         # Main container
-        main_container = tk.Frame(self.root, bg='#0a0e27')
+        main_container = tk.Frame(self.root, bg=self.bg_dark)
         main_container.pack(fill='both', expand=True, padx=20, pady=10)
         
         # Left panel
-        left_panel = tk.Frame(main_container, bg='#1a1f3a', width=380)
+        left_panel = tk.Frame(main_container, bg=self.bg_panel, width=380)
         left_panel.pack(side='left', fill='both', padx=(0, 10))
         
         # Control buttons
         control_frame = tk.LabelFrame(
             left_panel, 
             text="⚡ Үндсэн үйлдлүүд", 
-            font=('Segoe UI', 12, 'bold'),
-            bg='#1a1f3a',
-            fg='#ffffff',
+            font=self.get_font(12, 'bold'),
+            bg=self.bg_panel,
+            fg=self.fg_secondary,
             padx=15,
-            pady=15
+            pady=15,
+            relief='flat' if self.is_macos else 'groove',
+            borderwidth=1
         )
         control_frame.pack(fill='x', pady=10, padx=10)
         
@@ -110,47 +163,60 @@ class EnhancedFaceRecognitionSystem:
         advanced_frame = tk.LabelFrame(
             left_panel, 
             text="🎛️ Нарийвчилсан тохиргоо", 
-            font=('Segoe UI', 12, 'bold'),
-            bg='#1a1f3a',
-            fg='#ffffff',
+            font=self.get_font(12, 'bold'),
+            bg=self.bg_panel,
+            fg=self.fg_secondary,
             padx=15,
-            pady=15
+            pady=15,
+            relief='flat' if self.is_macos else 'groove',
+            borderwidth=1
         )
         advanced_frame.pack(fill='x', pady=10, padx=10)
+        
+        # Checkbutton colors for macOS
+        checkbutton_bg = self.bg_panel
+        checkbutton_fg = self.fg_secondary
+        checkbutton_select = '#2a2f4a' if not self.is_macos else '#3a3f5a'
         
         self.multi_angle_var = tk.BooleanVar(value=True)
         tk.Checkbutton(
             advanced_frame, text="📐 Олон өнцгөөс авах",
-            variable=self.multi_angle_var, bg='#1a1f3a', fg='#ffffff',
-            selectcolor='#2a2f4a', font=('Segoe UI', 10)
+            variable=self.multi_angle_var, bg=checkbutton_bg, fg=checkbutton_fg,
+            selectcolor=checkbutton_select, font=self.get_font(10),
+            activebackground=checkbutton_bg, activeforeground=checkbutton_fg
         ).pack(anchor='w', pady=3)
         
         self.quality_filter_var = tk.BooleanVar(value=True)
         tk.Checkbutton(
             advanced_frame, text="✨ Чанарын шүүлтүүр",
-            variable=self.quality_filter_var, bg='#1a1f3a', fg='#ffffff',
-            selectcolor='#2a2f4a', font=('Segoe UI', 10)
+            variable=self.quality_filter_var, bg=checkbutton_bg, fg=checkbutton_fg,
+            selectcolor=checkbutton_select, font=self.get_font(10),
+            activebackground=checkbutton_bg, activeforeground=checkbutton_fg
         ).pack(anchor='w', pady=3)
         
         self.deep_features_var = tk.BooleanVar(value=True)
         tk.Checkbutton(
             advanced_frame, text="🧠 Deep features (LBP+HOG+ORB)",
-            variable=self.deep_features_var, bg='#1a1f3a', fg='#ffffff',
-            selectcolor='#2a2f4a', font=('Segoe UI', 10)
+            variable=self.deep_features_var, bg=checkbutton_bg, fg=checkbutton_fg,
+            selectcolor=checkbutton_select, font=self.get_font(10),
+            activebackground=checkbutton_bg, activeforeground=checkbutton_fg
         ).pack(anchor='w', pady=3)
         
         self.show_confidence_var = tk.BooleanVar(value=True)
         tk.Checkbutton(
             advanced_frame, text="📊 Confidence bar",
-            variable=self.show_confidence_var, bg='#1a1f3a', fg='#ffffff',
-            selectcolor='#2a2f4a', font=('Segoe UI', 10)
+            variable=self.show_confidence_var, bg=checkbutton_bg, fg=checkbutton_fg,
+            selectcolor=checkbutton_select, font=self.get_font(10),
+            activebackground=checkbutton_bg, activeforeground=checkbutton_fg
         ).pack(anchor='w', pady=3)
         
         # Data management
         data_frame = tk.LabelFrame(
             left_panel, text="💾 Дата удирдлага", 
-            font=('Segoe UI', 12, 'bold'),
-            bg='#1a1f3a', fg='#ffffff', padx=15, pady=15
+            font=self.get_font(12, 'bold'),
+            bg=self.bg_panel, fg=self.fg_secondary, padx=15, pady=15,
+            relief='flat' if self.is_macos else 'groove',
+            borderwidth=1
         )
         data_frame.pack(fill='x', pady=10, padx=10)
         
@@ -170,13 +236,15 @@ class EnhancedFaceRecognitionSystem:
         # Settings
         settings_frame = tk.LabelFrame(
             left_panel, text="⚙️ Тохиргоо", 
-            font=('Segoe UI', 12, 'bold'),
-            bg='#1a1f3a', fg='#ffffff', padx=15, pady=15
+            font=self.get_font(12, 'bold'),
+            bg=self.bg_panel, fg=self.fg_secondary, padx=15, pady=15,
+            relief='flat' if self.is_macos else 'groove',
+            borderwidth=1
         )
         settings_frame.pack(fill='x', pady=10, padx=10)
         
         tk.Label(settings_frame, text="Threshold утга:", 
-                bg='#1a1f3a', fg='#ffffff', font=('Segoe UI', 10)).pack(anchor='w')
+                bg=self.bg_panel, fg=self.fg_secondary, font=self.get_font(10)).pack(anchor='w')
         
         self.threshold_var = tk.DoubleVar(value=self.threshold)
         threshold_slider = ttk.Scale(
@@ -188,62 +256,82 @@ class EnhancedFaceRecognitionSystem:
         
         self.threshold_label = tk.Label(
             settings_frame, text=f"Утга: {self.threshold:.2f}",
-            bg='#1a1f3a', fg='#00ff9f', font=('Segoe UI', 9, 'bold')
+            bg=self.bg_panel, fg=self.fg_primary, font=self.get_font(9, 'bold')
         )
         self.threshold_label.pack()
         
         # Status display
         status_frame = tk.LabelFrame(
             left_panel, text="📊 Систем мэдээлэл", 
-            font=('Segoe UI', 12, 'bold'),
-            bg='#1a1f3a', fg='#ffffff', padx=15, pady=15
+            font=self.get_font(12, 'bold'),
+            bg=self.bg_panel, fg=self.fg_secondary, padx=15, pady=15,
+            relief='flat' if self.is_macos else 'groove',
+            borderwidth=1
         )
         status_frame.pack(fill='both', expand=True, pady=10, padx=10)
         
+        # Use monospace font that works on macOS
+        monospace_font = 'Menlo' if self.is_macos else ('Consolas' if self.is_windows else 'Monaco')
         self.status_text = tk.Text(
-            status_frame, height=12, bg='#0a0e27', fg='#00ff9f',
-            font=('Consolas', 9), wrap='word', state='disabled',
-            borderwidth=0, highlightthickness=0
+            status_frame, height=12, bg=self.bg_dark, fg=self.fg_primary,
+            font=(monospace_font, 9), wrap='word', state='disabled',
+            borderwidth=0, highlightthickness=0,
+            insertbackground=self.fg_primary
         )
         self.status_text.pack(fill='both', expand=True)
         
         # Right panel - Video
-        right_panel = tk.Frame(main_container, bg='#1a1f3a')
+        right_panel = tk.Frame(main_container, bg=self.bg_panel)
         right_panel.pack(side='right', fill='both', expand=True)
         
         video_frame = tk.LabelFrame(
             right_panel, text="📹 Видео харагдац",
-            font=('Segoe UI', 12, 'bold'),
-            bg='#1a1f3a', fg='#ffffff'
+            font=self.get_font(12, 'bold'),
+            bg=self.bg_panel, fg=self.fg_secondary,
+            relief='flat' if self.is_macos else 'groove',
+            borderwidth=1
         )
         video_frame.pack(fill='both', expand=True, padx=10, pady=10)
         
         self.video_label = tk.Label(
-            video_frame, bg='#0a0e27',
+            video_frame, bg=self.bg_dark,
             text="🎥 Видео зогссон байна\n\n✨ Эхлүүлэхийн тулд дээрх товчийг дарна уу",
-            font=('Segoe UI', 14), fg='#666699'
+            font=self.get_font(14), fg=self.fg_muted
         )
         self.video_label.pack(fill='both', expand=True, padx=10, pady=10)
         
         # Info bar
-        info_frame = tk.Frame(right_panel, bg='#1a1f3a', height=40)
+        info_frame = tk.Frame(right_panel, bg=self.bg_panel, height=40)
         info_frame.pack(fill='x', padx=10, pady=(0, 10))
         
         self.info_label = tk.Label(
             info_frame, text="⚡ Бэлэн",
-            font=('Segoe UI', 10), bg='#1a1f3a', fg='#00ff9f'
+            font=self.get_font(10), bg=self.bg_panel, fg=self.fg_primary
         )
         self.info_label.pack(side='left', padx=10, pady=5)
         
         self.update_status_display()
     
     def create_button(self, parent, text, command, color):
-        """Create styled button"""
+        """Create styled button with macOS compatibility"""
+        # Adjust button style for macOS
+        if self.is_macos:
+            relief = 'flat'
+            borderwidth = 1
+            highlightthickness = 0
+        else:
+            relief = 'flat'
+            borderwidth = 0
+            highlightthickness = 0
+        
         btn = tk.Button(
             parent, text=text, command=command,
-            bg=color, fg='#ffffff', font=('Segoe UI', 11, 'bold'),
-            relief='flat', cursor='hand2', height=2,
-            activebackground=self.lighten_color(color), borderwidth=0
+            bg=color, fg='#ffffff', font=self.get_font(11, 'bold'),
+            relief=relief, cursor='hand2', height=2,
+            activebackground=self.lighten_color(color),
+            activeforeground='#ffffff',
+            borderwidth=borderwidth,
+            highlightthickness=highlightthickness
         )
         btn.bind('<Enter>', lambda e: btn.config(bg=self.lighten_color(color)))
         btn.bind('<Leave>', lambda e: btn.config(bg=color))
@@ -261,10 +349,17 @@ class EnhancedFaceRecognitionSystem:
     def extract_deep_features(self, face_image):
         """Extract deep features: LBP + HOG + ORB + Histogram"""
         try:
+            if face_image is None or face_image.size == 0:
+                return None
+            
             if len(face_image.shape) == 3:
                 gray = cv2.cvtColor(face_image, cv2.COLOR_BGR2GRAY)
             else:
                 gray = face_image
+            
+            # Ensure minimum size
+            if gray.shape[0] < 20 or gray.shape[1] < 20:
+                return None
             
             gray = cv2.resize(gray, (128, 128))
             gray = cv2.equalizeHist(gray)
@@ -275,23 +370,38 @@ class EnhancedFaceRecognitionSystem:
             
             # 2. LBP
             lbp = self.compute_lbp(gray)
-            lbp_hist = cv2.calcHist([lbp], [0], None, [256], [0, 256])
-            lbp_hist = cv2.normalize(lbp_hist, lbp_hist).flatten()[:64]
+            if lbp is not None and lbp.size > 0:
+                lbp_hist = cv2.calcHist([lbp], [0], None, [256], [0, 256])
+                lbp_hist = cv2.normalize(lbp_hist, lbp_hist).flatten()[:64]
+            else:
+                lbp_hist = np.zeros(64)
             
             # 3. HOG
-            hog = self.compute_hog(gray)[:128]
+            hog = self.compute_hog(gray)
+            if len(hog) > 128:
+                hog = hog[:128]
+            elif len(hog) < 128:
+                hog = np.pad(hog, (0, 128 - len(hog)), 'constant')
             
             # 4. ORB
             orb_feat = self.compute_orb_features(gray)
+            if len(orb_feat) < 32:
+                orb_feat = np.pad(orb_feat, (0, 32 - len(orb_feat)), 'constant')
             
             # Combine
             combined = np.concatenate([hist, lbp_hist, hog, orb_feat])
             
-            # Normalize
-            if np.linalg.norm(combined) > 0:
-                combined = combined / np.linalg.norm(combined)
+            # Validate and normalize
+            if np.any(np.isnan(combined)) or np.any(np.isinf(combined)):
+                return None
             
-            return combined
+            norm = np.linalg.norm(combined)
+            if norm > 0:
+                combined = combined / norm
+            else:
+                return None
+            
+            return combined.astype(np.float32)
         except Exception as e:
             return None
     
@@ -382,11 +492,41 @@ class EnhancedFaceRecognitionSystem:
     
     def compare_features(self, feat1, feat2):
         """Compare features"""
-        cos_sim = np.dot(feat1, feat2) / (np.linalg.norm(feat1) * np.linalg.norm(feat2) + 1e-6)
-        euclidean_dist = np.linalg.norm(feat1 - feat2)
-        euclidean_sim = 1 / (1 + euclidean_dist)
-        similarity = 0.7 * cos_sim + 0.3 * euclidean_sim
-        return similarity
+        try:
+            # Ensure features are numpy arrays and valid
+            feat1 = np.array(feat1, dtype=np.float32)
+            feat2 = np.array(feat2, dtype=np.float32)
+            
+            # Check for invalid values
+            if np.any(np.isnan(feat1)) or np.any(np.isnan(feat2)):
+                return 0.0
+            if np.any(np.isinf(feat1)) or np.any(np.isinf(feat2)):
+                return 0.0
+            
+            # Normalize features
+            norm1 = np.linalg.norm(feat1)
+            norm2 = np.linalg.norm(feat2)
+            
+            if norm1 == 0 or norm2 == 0:
+                return 0.0
+            
+            feat1_norm = feat1 / norm1
+            feat2_norm = feat2 / norm2
+            
+            # Cosine similarity
+            cos_sim = np.clip(np.dot(feat1_norm, feat2_norm), -1.0, 1.0)
+            
+            # Euclidean distance similarity
+            euclidean_dist = np.linalg.norm(feat1_norm - feat2_norm)
+            euclidean_sim = 1 / (1 + euclidean_dist)
+            
+            # Combined similarity (weighted)
+            similarity = 0.7 * cos_sim + 0.3 * euclidean_sim
+            
+            # Ensure similarity is in valid range
+            return np.clip(similarity, 0.0, 1.0)
+        except Exception as e:
+            return 0.0
     
     def start_registration(self):
         """Start registration"""
@@ -397,28 +537,28 @@ class EnhancedFaceRecognitionSystem:
         dialog = tk.Toplevel(self.root)
         dialog.title("✨ Нүүр бүртгэх")
         dialog.geometry("450x280")
-        dialog.configure(bg='#1a1f3a')
+        dialog.configure(bg=self.bg_panel)
         dialog.transient(self.root)
         dialog.grab_set()
         
         tk.Label(dialog, text="👤 Хүний нэр оруулна уу:",
-                font=('Segoe UI', 13, 'bold'),
-                bg='#1a1f3a', fg='#ffffff').pack(pady=25)
+                font=self.get_font(13, 'bold'),
+                bg=self.bg_panel, fg=self.fg_secondary).pack(pady=25)
         
-        name_entry = tk.Entry(dialog, font=('Segoe UI', 12), width=30,
-                             bg='#2a2f4a', fg='#ffffff',
-                             insertbackground='#00ff9f', relief='flat', borderwidth=5)
+        name_entry = tk.Entry(dialog, font=self.get_font(12), width=30,
+                             bg='#2a2f4a', fg=self.fg_secondary,
+                             insertbackground=self.fg_primary, relief='flat', borderwidth=5)
         name_entry.pack(pady=10)
         name_entry.focus()
         
         tk.Label(dialog, text="📸 Зургийн тоо:",
-                font=('Segoe UI', 10),
-                bg='#1a1f3a', fg='#ffffff').pack(pady=(10, 5))
+                font=self.get_font(10),
+                bg=self.bg_panel, fg=self.fg_secondary).pack(pady=(10, 5))
         
         sample_var = tk.IntVar(value=15)
         tk.Spinbox(dialog, from_=8, to=25, textvariable=sample_var,
-                  font=('Segoe UI', 11), width=10,
-                  bg='#2a2f4a', fg='#ffffff').pack()
+                  font=self.get_font(11), width=10,
+                  bg='#2a2f4a', fg=self.fg_secondary).pack()
         
         def submit():
             name = name_entry.get().strip()
@@ -430,12 +570,74 @@ class EnhancedFaceRecognitionSystem:
             else:
                 messagebox.showerror("Алдаа", "Нэр оруулна уу!")
         
-        tk.Button(dialog, text="✓ Эхлүүлэх", command=submit,
-                 bg='#00ff9f', fg='#0a0e27',
-                 font=('Segoe UI', 11, 'bold'),
-                 cursor='hand2', height=2, relief='flat').pack(pady=15)
+        submit_btn = tk.Button(dialog, text="✓ Эхлүүлэх", command=submit,
+                 bg=self.fg_primary, fg=self.bg_dark,
+                 font=self.get_font(11, 'bold'),
+                 cursor='hand2', height=2, relief='flat',
+                 activebackground=self.lighten_color(self.fg_primary),
+                 activeforeground=self.bg_dark)
+        submit_btn.pack(pady=15)
         
         name_entry.bind('<Return>', lambda e: submit())
+    
+    def is_face_centered(self, face_rect, frame_shape, center_threshold=0.15):
+        """Check if face is centered in frame"""
+        x, y, w, h = face_rect
+        frame_center_x = frame_shape[1] // 2
+        frame_center_y = frame_shape[0] // 2
+        face_center_x = x + w // 2
+        face_center_y = y + h // 2
+        
+        # Calculate distance from center
+        dx = abs(face_center_x - frame_center_x) / frame_shape[1]
+        dy = abs(face_center_y - frame_center_y) / frame_shape[0]
+        
+        # Check if face is within center threshold
+        return dx < center_threshold and dy < center_threshold
+    
+    def draw_center_guide(self, frame):
+        """Draw center guide lines"""
+        h, w = frame.shape[:2]
+        center_x, center_y = w // 2, h // 2
+        
+        # Draw crosshair
+        line_length = 30
+        thickness = 2
+        color = (100, 100, 255)  # Light blue
+        
+        # Horizontal line
+        cv2.line(frame, (center_x - line_length, center_y), 
+                (center_x + line_length, center_y), color, thickness)
+        # Vertical line
+        cv2.line(frame, (center_x, center_y - line_length), 
+                (center_x, center_y + line_length), color, thickness)
+        
+        # Draw center circle
+        cv2.circle(frame, (center_x, center_y), 50, color, 2)
+    
+    def clean_features(self, features_list):
+        """Clean and normalize features list"""
+        cleaned_features = []
+        for features in features_list:
+            try:
+                features_array = np.array(features, dtype=np.float32)
+                
+                # Remove NaN and Inf
+                if np.any(np.isnan(features_array)) or np.any(np.isinf(features_array)):
+                    continue
+                
+                # Normalize
+                norm = np.linalg.norm(features_array)
+                if norm > 0:
+                    features_array = features_array / norm
+                else:
+                    continue
+                
+                cleaned_features.append(features_array)
+            except:
+                continue
+        
+        return cleaned_features
     
     def register_thread(self):
         """Registration thread"""
@@ -446,6 +648,7 @@ class EnhancedFaceRecognitionSystem:
         self.stop_btn.config(state='normal')
         
         self.update_status(f"\n🚀 {self.register_name} бүртгэж байна...")
+        self.update_status("📍 Нүүрээ камерын төвд байрлуулна уу")
         self.info_label.config(text=f"📸 Бүртгэл: {self.register_name}")
         
         self.video_capture = cv2.VideoCapture(0)
@@ -456,11 +659,15 @@ class EnhancedFaceRecognitionSystem:
         face_positions = []
         last_capture = time.time()
         stable_frames = 0
+        centered_frames = 0
         
         while count < self.register_samples and self.is_capturing:
             ret, frame = self.video_capture.read()
             if not ret:
                 break
+            
+            # Draw center guide
+            self.draw_center_guide(frame)
             
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             faces = self.face_cascade.detectMultiScale(
@@ -470,57 +677,102 @@ class EnhancedFaceRecognitionSystem:
             
             current_time = time.time()
             
-            for (x, y, w, h) in faces:
+            # Process only the largest face (closest to camera)
+            if len(faces) > 0:
+                # Sort by area (largest first)
+                faces = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)
+                x, y, w, h = faces[0]
+                
                 roi_gray = gray[y:y+h, x:x+w]
                 eyes = self.eye_cascade.detectMultiScale(roi_gray, minNeighbors=8)
                 has_eyes = len(eyes) >= 2
                 
                 face_center = (x + w//2, y + h//2)
+                is_centered = self.is_face_centered((x, y, w, h), frame.shape)
                 is_new_angle = self.is_new_angle(face_center, face_positions) if self.multi_angle_var.get() else True
                 
                 face_roi = frame[y:y+h, x:x+w]
                 quality = self.calculate_face_quality(face_roi)
                 quality_ok = quality > 35 if self.quality_filter_var.get() else True
                 
-                ready = has_eyes and is_new_angle and quality_ok
+                # All conditions must be met
+                ready = has_eyes and is_centered and is_new_angle and quality_ok
                 
                 if ready:
-                    color = (0, 255, 0)
+                    color = (0, 255, 0)  # Green - ready
                     stable_frames += 1
+                    centered_frames += 1
                 else:
-                    if not quality_ok:
-                        color = (255, 0, 255)
-                    elif has_eyes:
-                        color = (0, 255, 255)
+                    if not is_centered:
+                        color = (0, 165, 255)  # Orange - not centered
+                        centered_frames = 0
+                    elif not quality_ok:
+                        color = (255, 0, 255)  # Magenta - low quality
+                        centered_frames = 0
+                    elif not has_eyes:
+                        color = (0, 255, 255)  # Yellow - no eyes
+                        centered_frames = 0
                     else:
-                        color = (0, 165, 255)
+                        color = (0, 165, 255)  # Orange - same angle
+                        centered_frames = 0
                     stable_frames = 0
                 
+                # Draw face rectangle
                 cv2.rectangle(frame, (x, y), (x+w, y+h), color, 3)
                 
+                # Draw center indicator
+                if is_centered:
+                    cv2.circle(frame, face_center, 5, (0, 255, 0), -1)
+                
+                # Status text
+                status_text = []
                 if self.quality_filter_var.get():
-                    cv2.putText(frame, f"Q: {quality:.0f}%", (x, y-10),
+                    status_text.append(f"Q: {quality:.0f}%")
+                if not is_centered:
+                    status_text.append("Центрт байрлуулна уу")
+                elif not has_eyes:
+                    status_text.append("Нүд харагдахгүй")
+                elif ready:
+                    status_text.append("✓ Бэлэн")
+                
+                if status_text:
+                    text = " | ".join(status_text)
+                    cv2.putText(frame, text, (x, y-10),
                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
                 
-                if stable_frames >= 3 and current_time - last_capture >= 0.5:
+                # Capture when face is centered and stable
+                if ready and stable_frames >= 5 and centered_frames >= 3 and current_time - last_capture >= 0.6:
                     if self.deep_features_var.get():
                         features = self.extract_deep_features(face_roi)
                     else:
                         features = self.extract_simple_features(face_roi)
                     
-                    if features is not None:
-                        features_list.append(features)
-                        quality_list.append(quality)
-                        face_positions.append(face_center)
-                        count += 1
-                        last_capture = current_time
-                        stable_frames = 0
-                        
-                        overlay = frame.copy()
-                        cv2.circle(overlay, (frame.shape[1]//2, frame.shape[0]//2), 80, (0, 255, 0), -1)
-                        frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
-                        
-                        self.update_status(f"📸 {count}/{self.register_samples} - Q: {quality:.0f}%")
+                    # Validate features before saving
+                    if features is not None and len(features) > 0:
+                        try:
+                            features_array = np.array(features, dtype=np.float32)
+                            if not np.any(np.isnan(features_array)) and not np.any(np.isinf(features_array)):
+                                # Normalize feature
+                                norm = np.linalg.norm(features_array)
+                                if norm > 0:
+                                    features_array = features_array / norm
+                                    features_list.append(features_array)
+                                    quality_list.append(quality)
+                                    face_positions.append(face_center)
+                                    count += 1
+                                    last_capture = current_time
+                                    stable_frames = 0
+                                    centered_frames = 0
+                                    
+                                    # Flash effect
+                                    overlay = frame.copy()
+                                    cv2.circle(overlay, (frame.shape[1]//2, frame.shape[0]//2), 100, (0, 255, 0), -1)
+                                    frame = cv2.addWeighted(frame, 0.6, overlay, 0.4, 0)
+                                    
+                                    self.update_status(f"📸 {count}/{self.register_samples} - Q: {quality:.0f}%")
+                        except:
+                            # Skip invalid features
+                            pass
             
             self.draw_progress(frame, count, self.register_samples)
             self.display_frame(frame)
@@ -531,16 +783,57 @@ class EnhancedFaceRecognitionSystem:
         self.video_capture.release()
         
         if count >= 3:
+            # Clean features before saving - match with quality and positions
+            cleaned_data = []
             for i, features in enumerate(features_list):
-                self.known_face_features.append(features)
-                self.known_face_names.append(self.register_name)
-                self.face_quality_scores.append(quality_list[i])
+                try:
+                    features_array = np.array(features, dtype=np.float32)
+                    if not np.any(np.isnan(features_array)) and not np.any(np.isinf(features_array)):
+                        norm = np.linalg.norm(features_array)
+                        if norm > 0:
+                            features_array = features_array / norm
+                            cleaned_data.append({
+                                'features': features_array,
+                                'quality': quality_list[i],
+                                'position': face_positions[i]
+                            })
+                except:
+                    continue
             
-            avg_quality = np.mean(quality_list)
-            self.update_status(f"✅ {self.register_name} амжилттай бүртгэгдлээ!")
-            self.update_status(f"📊 Дундаж чанар: {avg_quality:.1f}%")
-            self.save_data()
-            self.update_status_display()
+            if len(cleaned_data) >= 3:
+                # Remove duplicates (similar features)
+                unique_features = []
+                unique_qualities = []
+                unique_positions = []
+                
+                for data in cleaned_data:
+                    feat = data['features']
+                    is_duplicate = False
+                    for existing_feat in unique_features:
+                        similarity = self.compare_features(feat, existing_feat)
+                        if similarity > 0.95:  # Very similar features
+                            is_duplicate = True
+                            break
+                    
+                    if not is_duplicate:
+                        unique_features.append(feat)
+                        unique_qualities.append(data['quality'])
+                        unique_positions.append(data['position'])
+                
+                # Save cleaned data
+                for i, features in enumerate(unique_features):
+                    self.known_face_features.append(features)
+                    self.known_face_names.append(self.register_name)
+                    self.face_quality_scores.append(unique_qualities[i])
+                
+                avg_quality = np.mean(unique_qualities)
+                self.update_status(f"✅ {self.register_name} амжилттай бүртгэгдлээ!")
+                self.update_status(f"📊 Дундаж чанар: {avg_quality:.1f}%")
+                self.update_status(f"🧹 Цэвэрлэсэн: {len(unique_features)}/{len(cleaned_data)} зураг")
+                self.save_data()
+                self.update_status_display()
+            else:
+                self.update_status(f"❌ Хангалттай цэвэр дата байхгүй!")
         else:
             self.update_status(f"❌ Хангалттай зураг аваагүй!")
         
@@ -549,11 +842,25 @@ class EnhancedFaceRecognitionSystem:
     def extract_simple_features(self, face_image):
         """Simple histogram features"""
         try:
+            if face_image is None or face_image.size == 0:
+                return None
+            
             gray = cv2.cvtColor(face_image, cv2.COLOR_BGR2GRAY) if len(face_image.shape) == 3 else face_image
+            
+            # Ensure minimum size
+            if gray.shape[0] < 20 or gray.shape[1] < 20:
+                return None
+            
             gray = cv2.resize(gray, (100, 100))
             gray = cv2.equalizeHist(gray)
             hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
-            return cv2.normalize(hist, hist).flatten()
+            features = cv2.normalize(hist, hist).flatten()
+            
+            # Validate features
+            if np.any(np.isnan(features)) or np.any(np.isinf(features)):
+                return None
+            
+            return features.astype(np.float32)
         except:
             return None
     
@@ -620,14 +927,25 @@ class EnhancedFaceRecognitionSystem:
                 for face_id, (x, y, w, h) in enumerate(faces):
                     face_roi = frame[y:y+h, x:x+w]
                     
-                    if self.deep_features_var.get():
-                        features = self.extract_deep_features(face_roi)
-                    else:
-                        features = self.extract_simple_features(face_roi)
+                    # Ensure face ROI is valid
+                    if face_roi.size == 0 or face_roi.shape[0] < 20 or face_roi.shape[1] < 20:
+                        continue
                     
-                    if features is not None:
-                        name, confidence = self.find_best_match(features)
-                        new_results[face_id] = (x, y, w, h, name, confidence)
+                    try:
+                        if self.deep_features_var.get():
+                            features = self.extract_deep_features(face_roi)
+                        else:
+                            features = self.extract_simple_features(face_roi)
+                        
+                        if features is not None and len(features) > 0:
+                            # Validate features before matching
+                            features_array = np.array(features, dtype=np.float32)
+                            if not np.any(np.isnan(features_array)) and not np.any(np.isinf(features_array)):
+                                name, confidence = self.find_best_match(features)
+                                new_results[face_id] = (x, y, w, h, name, confidence)
+                    except Exception as e:
+                        # Skip this face if extraction fails
+                        continue
                 
                 last_results = new_results
             
@@ -672,19 +990,38 @@ class EnhancedFaceRecognitionSystem:
         if not self.known_face_features:
             return "Танигдаагүй", 0
         
-        max_similarity = 0
-        best_name = "Танигдаагүй"
+        if features is None:
+            return "Танигдаагүй", 0
         
-        for idx, known_features in enumerate(self.known_face_features):
-            similarity = self.compare_features(features, known_features)
+        try:
+            # Ensure input features are valid
+            features = np.array(features, dtype=np.float32)
+            if np.any(np.isnan(features)) or np.any(np.isinf(features)):
+                return "Танигдаагүй", 0
             
-            if similarity > max_similarity:
-                max_similarity = similarity
-                best_name = self.known_face_names[idx]
-        
-        if max_similarity > self.threshold:
-            return best_name, max_similarity * 100
-        else:
+            max_similarity = 0
+            best_name = "Танигдаагүй"
+            best_idx = -1
+            
+            # Compare with all known faces
+            for idx, known_features in enumerate(self.known_face_features):
+                if known_features is None:
+                    continue
+                
+                similarity = self.compare_features(features, known_features)
+                
+                if similarity > max_similarity:
+                    max_similarity = similarity
+                    best_name = self.known_face_names[idx]
+                    best_idx = idx
+            
+            # Check if similarity meets threshold
+            if max_similarity >= self.threshold:
+                confidence = max_similarity * 100
+                return best_name, confidence
+            else:
+                return "Танигдаагүй", max_similarity * 100
+        except Exception as e:
             return "Танигдаагүй", 0
     
     def get_color(self, name, confidence):
@@ -803,12 +1140,40 @@ class EnhancedFaceRecognitionSystem:
         self.threshold_label.config(text=f"Утга: {self.threshold:.2f}")
     
     def save_data(self):
-        """Save data"""
+        """Save data with cleaning"""
         if not self.known_face_names:
             messagebox.showwarning("Анхааруулга", "Хадгалах дата байхгүй!")
             return
         
         try:
+            # Clean all features before saving
+            cleaned_features = []
+            cleaned_names = []
+            cleaned_qualities = []
+            
+            for i, features in enumerate(self.known_face_features):
+                try:
+                    features_array = np.array(features, dtype=np.float32)
+                    
+                    # Remove invalid features
+                    if np.any(np.isnan(features_array)) or np.any(np.isinf(features_array)):
+                        continue
+                    
+                    # Normalize
+                    norm = np.linalg.norm(features_array)
+                    if norm > 0:
+                        features_array = features_array / norm
+                        cleaned_features.append(features_array)
+                        cleaned_names.append(self.known_face_names[i])
+                        cleaned_qualities.append(self.face_quality_scores[i] if i < len(self.face_quality_scores) else 50.0)
+                except:
+                    continue
+            
+            # Update with cleaned data
+            self.known_face_features = cleaned_features
+            self.known_face_names = cleaned_names
+            self.face_quality_scores = cleaned_qualities
+            
             data = {
                 'features': self.known_face_features,
                 'names': self.known_face_names,
@@ -821,26 +1186,49 @@ class EnhancedFaceRecognitionSystem:
                 pickle.dump(data, f)
             
             self.update_status("💾 Дата хадгалагдлаа!")
-            messagebox.showinfo("Амжилт", f"Амжилттай!\n{len(set(self.known_face_names))} хүн")
+            self.update_status(f"🧹 Цэвэрлэсэн: {len(cleaned_features)} зураг")
+            messagebox.showinfo("Амжилт", f"Амжилттай!\n{len(set(self.known_face_names))} хүн\n{len(cleaned_features)} цэвэр зураг")
         except Exception as e:
             messagebox.showerror("Алдаа", f"Хадгалах алдаа: {e}")
     
     def load_data_silent(self):
-        """Load data silently"""
+        """Load data silently with cleaning"""
         if os.path.exists(self.data_file):
             try:
                 with open(self.data_file, 'rb') as f:
                     data = pickle.load(f)
-                    self.known_face_features = data.get('features', [])
-                    self.known_face_names = data.get('names', [])
-                    self.face_quality_scores = data.get('quality_scores', [])
+                    raw_features = data.get('features', [])
+                    raw_names = data.get('names', [])
+                    raw_qualities = data.get('quality_scores', [])
                     self.threshold = data.get('threshold', self.threshold)
                     self.threshold_var.set(self.threshold)
+                
+                # Clean loaded data
+                cleaned_features = []
+                cleaned_names = []
+                cleaned_qualities = []
+                
+                for i, features in enumerate(raw_features):
+                    try:
+                        features_array = np.array(features, dtype=np.float32)
+                        if not np.any(np.isnan(features_array)) and not np.any(np.isinf(features_array)):
+                            norm = np.linalg.norm(features_array)
+                            if norm > 0:
+                                features_array = features_array / norm
+                                cleaned_features.append(features_array)
+                                cleaned_names.append(raw_names[i] if i < len(raw_names) else "Unknown")
+                                cleaned_qualities.append(raw_qualities[i] if i < len(raw_qualities) else 50.0)
+                    except:
+                        continue
+                
+                self.known_face_features = cleaned_features
+                self.known_face_names = cleaned_names
+                self.face_quality_scores = cleaned_qualities
             except:
                 pass
     
     def load_data(self):
-        """Load data"""
+        """Load data with cleaning"""
         if not os.path.exists(self.data_file):
             messagebox.showwarning("Анхааруулга", "Дата файл олдсонгүй!")
             return
@@ -848,14 +1236,49 @@ class EnhancedFaceRecognitionSystem:
         try:
             with open(self.data_file, 'rb') as f:
                 data = pickle.load(f)
-                self.known_face_features = data.get('features', [])
-                self.known_face_names = data.get('names', [])
-                self.face_quality_scores = data.get('quality_scores', [])
+                raw_features = data.get('features', [])
+                raw_names = data.get('names', [])
+                raw_qualities = data.get('quality_scores', [])
                 self.threshold = data.get('threshold', self.threshold)
                 self.threshold_var.set(self.threshold)
             
+            # Clean loaded data
+            cleaned_features = []
+            cleaned_names = []
+            cleaned_qualities = []
+            
+            for i, features in enumerate(raw_features):
+                try:
+                    features_array = np.array(features, dtype=np.float32)
+                    
+                    # Remove invalid features
+                    if np.any(np.isnan(features_array)) or np.any(np.isinf(features_array)):
+                        continue
+                    
+                    # Normalize
+                    norm = np.linalg.norm(features_array)
+                    if norm > 0:
+                        features_array = features_array / norm
+                        cleaned_features.append(features_array)
+                        cleaned_names.append(raw_names[i] if i < len(raw_names) else "Unknown")
+                        cleaned_qualities.append(raw_qualities[i] if i < len(raw_qualities) else 50.0)
+                except:
+                    continue
+            
+            # Update with cleaned data
+            self.known_face_features = cleaned_features
+            self.known_face_names = cleaned_names
+            self.face_quality_scores = cleaned_qualities
+            
             self.update_status_display()
-            messagebox.showinfo("Амжилт", f"Ачаалагдлаа!\n{len(set(self.known_face_names))} хүн")
+            cleaned_count = len(cleaned_features)
+            original_count = len(raw_features)
+            if cleaned_count < original_count:
+                messagebox.showinfo("Амжилт", 
+                    f"Ачаалагдлаа!\n{len(set(cleaned_names))} хүн\n"
+                    f"🧹 Цэвэрлэсэн: {cleaned_count}/{original_count} зураг")
+            else:
+                messagebox.showinfo("Амжилт", f"Ачаалагдлаа!\n{len(set(cleaned_names))} хүн")
         except Exception as e:
             messagebox.showerror("Алдаа", f"Ачаалах алдаа: {e}")
     
@@ -996,21 +1419,21 @@ class EnhancedFaceRecognitionSystem:
         dialog = tk.Toplevel(self.root)
         dialog.title("🗑️ Хүн устгах")
         dialog.geometry("450x350")
-        dialog.configure(bg='#1a1f3a')
+        dialog.configure(bg=self.bg_panel)
         dialog.transient(self.root)
         dialog.grab_set()
         
         tk.Label(dialog, text="⚠️ Устгах хүнийг сонгоно уу:",
-                font=('Segoe UI', 12, 'bold'),
-                bg='#1a1f3a', fg='#ffffff').pack(pady=20)
+                font=self.get_font(12, 'bold'),
+                bg=self.bg_panel, fg=self.fg_secondary).pack(pady=20)
         
         name_counts = Counter(self.known_face_names)
         names = sorted(name_counts.keys())
         
-        listbox = tk.Listbox(dialog, font=('Segoe UI', 11), height=10,
-                            bg='#2a2f4a', fg='#ffffff',
-                            selectbackground='#00ff9f',
-                            selectforeground='#0a0e27')
+        listbox = tk.Listbox(dialog, font=self.get_font(11), height=10,
+                            bg='#2a2f4a', fg=self.fg_secondary,
+                            selectbackground=self.fg_primary,
+                            selectforeground=self.bg_dark)
         listbox.pack(fill='both', expand=True, padx=20, pady=10)
         
         for name in names:
@@ -1041,10 +1464,13 @@ class EnhancedFaceRecognitionSystem:
                 self.update_status_display()
                 dialog.destroy()
         
-        tk.Button(dialog, text="🗑️ Устгах", command=delete_selected,
+        delete_btn = tk.Button(dialog, text="🗑️ Устгах", command=delete_selected,
                  bg='#ff4466', fg='#ffffff',
-                 font=('Segoe UI', 11, 'bold'),
-                 cursor='hand2', height=2, relief='flat').pack(pady=10)
+                 font=self.get_font(11, 'bold'),
+                 cursor='hand2', height=2, relief='flat',
+                 activebackground=self.lighten_color('#ff4466'),
+                 activeforeground='#ffffff')
+        delete_btn.pack(pady=10)
 
 
 def main():
@@ -1072,4 +1498,3 @@ if __name__ == "__main__":
         print(f"\n❌ Алдаа: {e}")
         import traceback
         traceback.print_exc()
-        1
