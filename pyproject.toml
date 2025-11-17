@@ -1,0 +1,25 @@
+[project]
+name = "faceless"
+version = "0.1.0"
+description = "Enhanced face recognition system built with Tkinter and OpenCV."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "opencv-python",
+    "numpy",
+    "Pillow",
+    "mtcnn",
+    "keras-facenet",
+    "tensorflow",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "src",
+]
+

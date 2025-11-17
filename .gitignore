@@ -1,0 +1,20 @@
+# Virtual environments
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Data artifacts
+*.pkl
+enhanced_face_data.pkl
+*.db
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
