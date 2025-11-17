@@ -148,15 +148,24 @@ class EnhancedFaceRecognitionSystem:
         
         self.register_btn = self.create_button(
             control_frame, "🤖 Нүүр бүртгэх", self.start_registration, '#00ff9f')
-        self.register_btn.pack(fill='x', pady=5)
+        if self.is_macos and hasattr(self.register_btn, '_frame'):
+            self.register_btn._frame.pack(fill='x', pady=5)
+        else:
+            self.register_btn.pack(fill='x', pady=5)
         
         self.recognize_btn = self.create_button(
             control_frame, "🎥 Танилт эхлүүлэх", self.start_recognition, '#00aaff')
-        self.recognize_btn.pack(fill='x', pady=5)
+        if self.is_macos and hasattr(self.recognize_btn, '_frame'):
+            self.recognize_btn._frame.pack(fill='x', pady=5)
+        else:
+            self.recognize_btn.pack(fill='x', pady=5)
         
         self.stop_btn = self.create_button(
             control_frame, "⏹️ Зогсоох", self.stop_capture, '#ff4466')
-        self.stop_btn.pack(fill='x', pady=5)
+        if self.is_macos and hasattr(self.stop_btn, '_frame'):
+            self.stop_btn._frame.pack(fill='x', pady=5)
+        else:
+            self.stop_btn.pack(fill='x', pady=5)
         self.stop_btn.config(state='disabled')
         
         # Advanced settings
@@ -231,7 +240,12 @@ class EnhancedFaceRecognitionSystem:
         ]
         
         for text, cmd, color in buttons:
-            self.create_button(data_frame, text, cmd, color).pack(fill='x', pady=3)
+            btn = self.create_button(data_frame, text, cmd, color)
+            # Handle macOS frame wrapper
+            if self.is_macos and hasattr(btn, '_frame'):
+                btn._frame.pack(fill='x', pady=3)
+            else:
+                btn.pack(fill='x', pady=3)
         
         # Settings
         settings_frame = tk.LabelFrame(
@@ -314,28 +328,58 @@ class EnhancedFaceRecognitionSystem:
     
     def create_button(self, parent, text, command, color):
         """Create styled button with macOS compatibility"""
-        # Adjust button style for macOS
+        # macOS requires special handling for colored buttons
         if self.is_macos:
-            relief = 'flat'
-            borderwidth = 1
-            highlightthickness = 0
+            # Create a frame to act as button container
+            btn_frame = tk.Frame(parent, bg=color, relief='flat', borderwidth=0)
+            
+            # Create the actual button with transparent background
+            btn = tk.Button(
+                btn_frame, text=text, command=command,
+                bg=color, fg='#ffffff', font=self.get_font(11, 'bold'),
+                relief='flat', cursor='hand2', height=2,
+                activebackground=self.lighten_color(color),
+                activeforeground='#ffffff',
+                borderwidth=0, highlightthickness=0,
+                highlightbackground=color,
+                highlightcolor=color
+            )
+            btn.pack(fill='both', expand=True)
+            
+            # Bind hover effects
+            def on_enter(e):
+                btn_frame.config(bg=self.lighten_color(color))
+                btn.config(bg=self.lighten_color(color), 
+                          activebackground=self.lighten_color(color),
+                          highlightbackground=self.lighten_color(color))
+            
+            def on_leave(e):
+                btn_frame.config(bg=color)
+                btn.config(bg=color, 
+                          activebackground=self.lighten_color(color),
+                          highlightbackground=color)
+            
+            btn_frame.bind('<Enter>', on_enter)
+            btn_frame.bind('<Leave>', on_leave)
+            btn.bind('<Enter>', on_enter)
+            btn.bind('<Leave>', on_leave)
+            
+            # Store reference to frame for packing
+            btn._frame = btn_frame
+            return btn
         else:
-            relief = 'flat'
-            borderwidth = 0
-            highlightthickness = 0
-        
-        btn = tk.Button(
-            parent, text=text, command=command,
-            bg=color, fg='#ffffff', font=self.get_font(11, 'bold'),
-            relief=relief, cursor='hand2', height=2,
-            activebackground=self.lighten_color(color),
-            activeforeground='#ffffff',
-            borderwidth=borderwidth,
-            highlightthickness=highlightthickness
-        )
-        btn.bind('<Enter>', lambda e: btn.config(bg=self.lighten_color(color)))
-        btn.bind('<Leave>', lambda e: btn.config(bg=color))
-        return btn
+            # Windows/Linux - use regular button
+            btn = tk.Button(
+                parent, text=text, command=command,
+                bg=color, fg='#ffffff', font=self.get_font(11, 'bold'),
+                relief='flat', cursor='hand2', height=2,
+                activebackground=self.lighten_color(color),
+                activeforeground='#ffffff',
+                borderwidth=0, highlightthickness=0
+            )
+            btn.bind('<Enter>', lambda e: btn.config(bg=self.lighten_color(color)))
+            btn.bind('<Leave>', lambda e: btn.config(bg=color))
+            return btn
     
     def lighten_color(self, color):
         """Lighten hex color"""
@@ -894,28 +938,36 @@ class EnhancedFaceRecognitionSystem:
         threading.Thread(target=self.recognize_thread, daemon=True).start()
     
     def recognize_thread(self):
-        """Recognition thread"""
+        """Recognition thread with optimized FPS"""
         self.video_capture = cv2.VideoCapture(0)
+        
+        # Set lower FPS for better performance
+        self.video_capture.set(cv2.CAP_PROP_FPS, 15)  # Limit to 15 FPS
         
         frame_count = 0
         last_results = {}
         fps_start = time.time()
         fps_counter = 0
+        last_process_time = time.time()
+        process_interval = 1.0 / 10  # Process every 100ms (10 FPS max)
         
         while self.is_capturing:
             ret, frame = self.video_capture.read()
             if not ret:
                 break
             
+            current_time = time.time()
             frame_count += 1
             fps_counter += 1
             
-            if time.time() - fps_start >= 1.0:
+            # Calculate FPS
+            if current_time - fps_start >= 1.0:
                 self.fps = fps_counter
                 fps_counter = 0
-                fps_start = time.time()
+                fps_start = current_time
             
-            if frame_count % 2 == 0:
+            # Process faces only at limited rate (10 FPS max)
+            if current_time - last_process_time >= process_interval:
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 faces = self.face_cascade.detectMultiScale(
                     gray, scaleFactor=1.2, minNeighbors=5,
@@ -948,7 +1000,9 @@ class EnhancedFaceRecognitionSystem:
                         continue
                 
                 last_results = new_results
+                last_process_time = current_time
             
+            # Always draw results (even if not processing this frame)
             for face_id, (x, y, w, h, name, confidence) in last_results.items():
                 color = self.get_color(name, confidence)
                 
@@ -978,6 +1032,9 @@ class EnhancedFaceRecognitionSystem:
             
             self.draw_hud(frame, len(last_results))
             self.display_frame(frame)
+            
+            # Small delay to limit display FPS
+            time.sleep(0.03)  # ~30 FPS display rate
             
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -1140,10 +1197,29 @@ class EnhancedFaceRecognitionSystem:
         self.threshold_label.config(text=f"Утга: {self.threshold:.2f}")
     
     def save_data(self):
-        """Save data with cleaning"""
+        """Save data with cleaning - show scanned persons first if data exists"""
         if not self.known_face_names:
             messagebox.showwarning("Анхааруулга", "Хадгалах дата байхгүй!")
             return
+        
+        # Check if data file already exists
+        if os.path.exists(self.data_file):
+            # Show scanned persons before saving
+            name_counts = Counter(self.known_face_names)
+            total_people = len(name_counts)
+            total_samples = len(self.known_face_names)
+            
+            people_list = "\n".join([f"  • {name}: {count} зураг" for name, count in sorted(name_counts.items())])
+            
+            message = f"📋 БҮРТГЭЛТЭЙ ХҮМҮҮС\n" + "="*40 + "\n\n"
+            message += f"👥 Нийт хүн: {total_people}\n"
+            message += f"📸 Нийт зураг: {total_samples}\n\n"
+            message += "📋 Хүмүүс:\n" + people_list + "\n\n"
+            message += "Хадгалах уу?"
+            
+            result = messagebox.askyesno("Бүртгэлтэй хүмүүс", message)
+            if not result:
+                return
         
         try:
             # Clean all features before saving
